@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PentDash — Penetration Testing Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR -->
+  <header id="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        PentDash
+      </div>
+      <span class="project-badge" id="project-label">project: ACME Corp — Q3 2025</span>
+    </div>
+    <div class="topbar-right">
+      <button class="btn-outline" onclick="openModal('modal-project')">Switch Project</button>
+      <button class="btn-primary" onclick="openModal('modal-project')">+ New Project</button>
+    </div>
+  </header>
+
+  <div id="body-row">
+
+    <!-- SIDEBAR -->
+    <nav id="sidebar">
+      <div class="nav-section-label">Tools</div>
+
+      <div class="nav-item" data-view="recon" onclick="setView(this,'recon')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Recon &amp; Info Gathering
+      </div>
+      <div class="nav-item" data-view="dir" onclick="setView(this,'dir')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Directory &amp; Brute-Force
+      </div>
+      <div class="nav-item" data-view="vuln" onclick="setView(this,'vuln')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Vulnerability Scanning
+      </div>
+      <div class="nav-item" data-view="webapp" onclick="setView(this,'webapp')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Web App Exploitation
+      </div>
+      <div class="nav-item" data-view="exploit" onclick="setView(this,'exploit')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        Exploit Frameworks
+      </div>
+      <div class="nav-item" data-view="cred" onclick="setView(this,'cred')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Password &amp; Credential
+      </div>
+      <div class="nav-item" data-view="wifi" onclick="setView(this,'wifi')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+        Wireless &amp; Sniffing
+      </div>
+      <div class="nav-item" data-view="code" onclick="setView(this,'code')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Code &amp; Secret Analysis
+      </div>
+      <div class="nav-item" data-view="ai" onclick="setView(this,'ai')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+        AI Attack Agents
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <div class="nav-item" data-view="results" onclick="setView(this,'results')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Results
+      </div>
+      <div class="nav-item" data-view="workflows" onclick="setView(this,'workflows')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>
+        Workflows
+      </div>
+
+      <div class="nav-divider"></div>
+      <div class="nav-item active" data-view="dashboard" onclick="setView(this,'dashboard')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main id="main">
+
+      <!-- ── DASHBOARD ── -->
+      <div id="view-dashboard" class="view active">
+        <div class="view-title">Dashboard</div>
+        <div class="view-sub">ACME Corp — Q3 Penetration Test · Started 2025-09-01</div>
+
+        <div class="api-bar">
+          <div class="api-dot"></div>
+          Python backend: <strong style="color:var(--text)">http://localhost:5000</strong> &nbsp;·&nbsp; POST /api/run &nbsp;·&nbsp; GET /api/results
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card c1">
+            <div class="stat-val">47</div>
+            <div class="stat-label">Total Scans Run</div>
+            <div class="stat-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </div>
+          </div>
+          <div class="stat-card c2">
+            <div class="stat-val">1,284</div>
+            <div class="stat-label">Total Findings</div>
+            <div class="stat-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+          </div>
+          <div class="stat-card c3">
+            <div class="stat-val">9</div>
+            <div class="stat-label">Critical / High</div>
+            <div class="stat-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+          </div>
+          <div class="stat-card c4">
+            <div class="stat-val">5</div>
+            <div class="stat-label">Workflows Saved</div>
+            <div class="stat-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Recent Scans</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tool</th><th>Category</th><th>Status</th><th>Started</th><th>Findings</th><th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="tool-tag">nmap</span> TCP Full Port</td>
+                <td style="color:var(--text-dim)">Recon &amp; Info Gathering</td>
+                <td><span class="status-dot"><span class="dot dot-green"></span> Completed</span></td>
+                <td style="color:var(--text-dim)">09:14 AM</td>
+                <td>12</td>
+                <td style="color:var(--text-dim)">3m 42s</td>
+              </tr>
+              <tr>
+                <td><span class="tool-tag">nuclei</span> CVE Templates</td>
+                <td style="color:var(--text-dim)">Vulnerability Scanning</td>
+                <td><span class="status-dot"><span class="dot dot-red"></span> Failed</span></td>
+                <td style="color:var(--text-dim)">08:55 AM</td>
+                <td>0</td>
+                <td style="color:var(--text-dim)">0m 08s</td>
+              </tr>
+              <tr>
+                <td><span class="tool-tag">ffuf</span> Common Paths</td>
+                <td style="color:var(--text-dim)">Directory &amp; Brute-Force</td>
+                <td><span class="status-dot"><span class="dot dot-blue"></span> Running</span></td>
+                <td style="color:var(--text-dim)">09:22 AM</td>
+                <td>—</td>
+                <td style="color:var(--text-dim)">Running…</td>
+              </tr>
+              <tr>
+                <td><span class="tool-tag">subfinder</span> Passive Enum</td>
+                <td style="color:var(--text-dim)">Recon &amp; Info Gathering</td>
+                <td><span class="status-dot"><span class="dot dot-green"></span> Completed</span></td>
+                <td style="color:var(--text-dim)">07:30 AM</td>
+                <td>45</td>
+                <td style="color:var(--text-dim)">1m 17s</td>
+              </tr>
+              <tr>
+                <td><span class="tool-tag">sqlmap</span> Union Injection</td>
+                <td style="color:var(--text-dim)">Web App Exploitation</td>
+                <td><span class="status-dot"><span class="dot dot-green"></span> Completed</span></td>
+                <td style="color:var(--text-dim)">Yesterday</td>
+                <td>3</td>
+                <td style="color:var(--text-dim)">8m 03s</td>
+              </tr>
+              <tr>
+                <td><span class="tool-tag">hashcat</span> Dict Attack</td>
+                <td style="color:var(--text-dim)">Password &amp; Credential</td>
+                <td><span class="status-dot"><span class="dot dot-orange"></span> Queued</span></td>
+                <td style="color:var(--text-dim)">Pending</td>
+                <td>—</td>
+                <td style="color:var(--text-dim)">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="dash-actions">
+          <button class="btn-primary" onclick="setViewById('recon')">▶ Run New Scan</button>
+          <button class="btn-outline" onclick="setViewById('results')">View All Results</button>
+        </div>
+      </div>
+
+      <!-- ── CLUSTER VIEW (shared) ── -->
+      <div id="cluster-view">
+        <div class="cluster-header">
+          <div class="cluster-title" id="cv-title">Recon &amp; Info Gathering</div>
+          <div class="cluster-desc" id="cv-desc">Discover live hosts, open ports, subdomains, and exposed services.</div>
+
+          <div class="params-grid">
+            <div class="param-group">
+              <label>Target Scope <span class="req">*</span></label>
+              <input type="text" id="cv-target" value="scanme.nmap.com" placeholder="192.168.1.0/24 or domain.com" />
+            </div>
+            <div class="param-group">
+              <label>Wordlist / Template</label>
+              <select id="cv-wordlist">
+                <option>SecLists/Discovery/DNS/subdomains-top1mil-20000.txt</option>
+                <option>SecLists/Discovery/Web-Content/common.txt</option>
+                <option>SecLists/Passwords/rockyou-75.txt</option>
+                <option>Custom (specify below)</option>
+              </select>
+            </div>
+            <div class="param-group">
+              <label>Rate Limit / Threads</label>
+              <input type="number" id="cv-threads" value="50" min="1" max="500" />
+            </div>
+            <div class="param-group">
+              <label>API Key / Auth Token (optional)</label>
+              <input type="password" id="cv-apikey" placeholder="sk-… or Bearer token" />
+            </div>
+          </div>
+
+          <button class="btn-run" id="cv-run-btn" onclick="runCluster()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Run All Tools
+          </button>
+        </div>
+
+        <div class="cluster-tools" id="cv-tool-list"></div>
+      </div>
+
+      <!-- ── RESULTS ── -->
+      <div id="view-results" class="view">
+        <div class="view-title">Results</div>
+        <div class="view-sub">ACME Corp · 4 findings shown · filtered by severity</div>
+
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterFindings(this,'All')">All</button>
+          <button class="filter-btn" onclick="filterFindings(this,'Recon & Info Gathering')">Recon</button>
+          <button class="filter-btn" onclick="filterFindings(this,'Directory & Brute-Force')">Dir Brute-Force</button>
+          <button class="filter-btn" onclick="filterFindings(this,'Vulnerability Scanning')">Vuln Scan</button>
+          <button class="filter-btn" onclick="filterFindings(this,'Web App Exploitation')">Web App</button>
+          <button class="filter-btn" onclick="filterFindings(this,'Password & Credential')">Credentials</button>
+        </div>
+
+        <div id="findings-list"></div>
+      </div>
+
+      <!-- ── WORKFLOWS ── -->
+      <div id="view-workflows" class="view">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+          <div>
+            <div class="view-title">Workflows</div>
+            <div class="view-sub">Saved scan chains for automated execution</div>
+          </div>
+          <button class="btn-primary" onclick="openModal('modal-workflow')">+ New Workflow</button>
+        </div>
+
+        <div class="wf-grid">
+          <div class="wf-card">
+            <div class="wf-name">Standard Web App Audit</div>
+            <div class="wf-steps">
+              <span class="wf-step">Recon</span>
+              <span class="wf-arrow">→</span>
+              <span class="wf-step">Dir Brute-Force</span>
+              <span class="wf-arrow">→</span>
+              <span class="wf-step">Vuln Scan</span>
+              <span class="wf-arrow">→</span>
+              <span class="wf-step">Web App Exploit</span>
+            </div>
+            <div class="wf-footer">
+              <button class="btn-run-wf" onclick="runWorkflow('Standard Web App Audit')">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run Workflow
+              </button>
+              <button class="btn-danger-sm">Delete</button>
+            </div>
+          </div>
+
+          <div class="wf-card">
+            <div class="wf-name">Internal Network Discovery</div>
+            <div class="wf-steps">
+              <span class="wf-step">Recon</span>
+              <span class="wf-arrow">→</span>
+              <span class="wf-step">Exploit Frameworks</span>
+              <span class="wf-arrow">→</span>
+              <span class="wf-step">Credentials</span>
+            </div>
+            <div class="wf-footer">
+              <button class="btn-run-wf" onclick="runWorkflow('Internal Network Discovery')">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run Workflow
+              </button>
+              <button class="btn-danger-sm">Delete</button>
+            </div>
+          </div>
+
+          <div class="wf-card">
+            <div class="wf-name">API Surface Enumeration</div>
+            <div class="wf-steps">
+              <span class="wf-step">Recon</span>
+              <span class="wf-arrow">→</span>
+              <span class="wf-step">Web App Exploit</span>
+              <span class="wf-arrow">→</span>
+              <span class="wf-step">Code Analysis</span>
+            </div>
+            <div class="wf-footer">
+              <button class="btn-run-wf" onclick="runWorkflow('API Surface Enumeration')">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run Workflow
+              </button>
+              <button class="btn-danger-sm">Delete</button>
+            </div>
+          </div>
+
+          <div class="wf-card">
+            <div class="wf-name">Wireless Pentest Chain</div>
+            <div class="wf-steps">
+              <span class="wf-step">Wireless &amp; Sniffing</span>
+              <span class="wf-arrow">→</span>
+              <span class="wf-step">Credentials</span>
+              <span class="wf-arrow">→</span>
+              <span class="wf-step">Exploit Frameworks</span>
+            </div>
+            <div class="wf-footer">
+              <button class="btn-run-wf" onclick="runWorkflow('Wireless Pentest Chain')">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run Workflow
+              </button>
+              <button class="btn-danger-sm">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- /#body-row -->
+</div><!-- /#app -->
+
+<!-- ── NEW PROJECT MODAL ── -->
+<div class="modal-overlay" id="modal-project">
+  <div class="modal">
+    <div class="modal-title">New Project</div>
+    <div class="form-group">
+      <label>Project Name <span style="color:var(--red)">*</span></label>
+      <input type="text" placeholder="e.g. Q4 External Pentest" />
+    </div>
+    <div class="form-group">
+      <label>Client / Organisation</label>
+      <input type="text" placeholder="ACME Corp" />
+    </div>
+    <div class="form-group">
+      <label>Target Scope (one per line)</label>
+      <textarea rows="4" placeholder="192.168.1.0/24&#10;api.acmecorp.com&#10;*.acmecorp.com"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Engagement Type</label>
+      <select>
+        <option>Black Box</option>
+        <option>Grey Box</option>
+        <option>White Box</option>
+        <option>Red Team</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-project')">Cancel</button>
+      <button class="btn-save" onclick="createProject()">Create Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── NEW WORKFLOW MODAL ── -->
+<div class="modal-overlay" id="modal-workflow">
+  <div class="modal">
+    <div class="modal-title">Create Workflow</div>
+    <div class="form-group">
+      <label>Workflow Name</label>
+      <input type="text" placeholder="e.g. Deep Web App Scan" />
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <input type="text" placeholder="Short description of this chain" />
+    </div>
+    <div class="form-group">
+      <label>Tool Chain (drag to reorder — Python runner will execute in this order)</label>
+      <div id="wf-chain" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+        <div style="display:flex;align-items:center;gap:10px;background:var(--bg-base);border:1px solid var(--border);border-radius:5px;padding:8px 12px;cursor:grab">
+          <span style="color:var(--text-faint);font-size:13px">⠿</span>
+          <span style="font-size:12px;font-family:var(--mono);color:var(--text-dim)">01 — Recon &amp; Info Gathering</span>
+          <input type="checkbox" checked style="margin-left:auto;width:auto" />
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;background:var(--bg-base);border:1px solid var(--border);border-radius:5px;padding:8px 12px;cursor:grab">
+          <span style="color:var(--text-faint);font-size:13px">⠿</span>
+          <span style="font-size:12px;font-family:var(--mono);color:var(--text-dim)">02 — Directory &amp; Brute-Force</span>
+          <input type="checkbox" checked style="margin-left:auto;width:auto" />
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;background:var(--bg-base);border:1px solid var(--border);border-radius:5px;padding:8px 12px;cursor:grab">
+          <span style="color:var(--text-faint);font-size:13px">⠿</span>
+          <span style="font-size:12px;font-family:var(--mono);color:var(--text-dim)">03 — Vulnerability Scanning</span>
+          <input type="checkbox" style="margin-left:auto;width:auto" />
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;background:var(--bg-base);border:1px solid var(--border);border-radius:5px;padding:8px 12px;cursor:grab">
+          <span style="color:var(--text-faint);font-size:13px">⠿</span>
+          <span style="font-size:12px;font-family:var(--mono);color:var(--text-dim)">04 — Web App Exploitation</span>
+          <input type="checkbox" style="margin-left:auto;width:auto" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-workflow')">Cancel</button>
+      <button class="btn-save" onclick="saveWorkflow()">Save Template</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast">
+  <div class="toast-title" id="toast-title">Project Created</div>
+  <div class="toast-desc" id="toast-desc">Workspace initialised.</div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

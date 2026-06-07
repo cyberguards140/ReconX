@@ -28,6 +28,29 @@ app.include_router(workflows.router, prefix="/api", tags=["workflows"])
 def health_check():
     return {"status": "ok"}
 
+@app.get("/api/health")
+def tool_health_check():
+    import shutil, subprocess
+    TOOLS = [
+        "nmap","subfinder","amass","masscan","naabu","ffuf","gobuster",
+        "dirsearch","feroxbuster","nuclei","nikto","sqlmap","hashcat",
+        "hydra","john","tshark","tcpdump","semgrep","gitleaks","trufflehog",
+    ]
+    result = {}
+    for tool in TOOLS:
+        path = shutil.which(tool)
+        if path:
+            try:
+                out = subprocess.run([tool, "--version"], capture_output=True, text=True, timeout=3)
+                version_line = (out.stdout or out.stderr or "").strip().split("\n")[0][:60]
+            except Exception:
+                version_line = ""
+            result[tool] = {"installed": True, "path": path, "version": version_line}
+        else:
+            result[tool] = {"installed": False, "path": None, "version": None}
+    installed = sum(1 for v in result.values() if v["installed"])
+    return {"total": len(TOOLS), "installed": installed, "tools": result}
+
 # Mount frontend static files
 # In production, you might want to serve index.html explicitly for the root
 import os

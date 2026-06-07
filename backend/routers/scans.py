@@ -14,21 +14,21 @@ def get_scan_results(scan_id: int, db: Session = Depends(get_db)):
 
 @router.post("/run/cluster")
 async def run_cluster(req: schemas.ClusterRunRequest, db: Session = Depends(get_db)):
-    from ..executor import execute_cluster_tools
+    from ..services.executor import execute_cluster_tools
     
     # Convert schema ToolCommands to dicts expected by executor
     commands = [{"name": t.name, "cmd": t.cmd} for t in req.tools]
         
     outputs = await execute_cluster_tools(commands)
     
-    from ..summarizer import generate_ai_summary
+    from ..services.summarizer import generate_ai_summary
     summary_data = await generate_ai_summary(req.cluster_name, outputs)
     
     return {"status": "completed", "outputs": outputs, "ai_summary": summary_data.get("ai_summary", "")}
 
 @router.post("/run/workflow")
 async def run_workflow(req: schemas.WorkflowRunRequest, db: Session = Depends(get_db)):
-    from ..workflow_runner import run_workflow_sequence
+    from ..services.workflow_runner import run_workflow_sequence
     
     # Run the workflow dynamically and wait for the results
     outputs = await run_workflow_sequence(req, db)

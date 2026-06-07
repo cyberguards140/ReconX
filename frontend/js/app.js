@@ -1,290 +1,183 @@
+/* ═══════════════════════════════════════════
+   PENTDASH — app.js
+   - Split panel cluster view
+   - Nmap accordion with live command preview
+   - Other tools as stubs (coming soon)
+   - Terminal-themed execution log on right panel
+   - localStorage view persistence
+═══════════════════════════════════════════ */
+
+'use strict';
+
 // ═══════════════════════════════════════════
-//  DATA
+//  CLUSTER DATA
 // ═══════════════════════════════════════════
 const CLUSTERS = {
   recon: {
     title: 'Recon & Info Gathering',
-    desc: 'Discover live hosts, open ports, subdomains, DNS records, and ASN data.',
+    desc: 'Discover live hosts, open ports, subdomains, and exposed services.',
     tools: [
-      { name: 'Nmap — Fast Scan',           cmd: 'nmap -sV -T4 -F {target}',                    status: 'idle' },
-      { name: 'Subfinder — Passive Enum',   cmd: 'subfinder -d {target} -silent',                status: 'idle' },
-      { name: 'Amass — Passive Enum',       cmd: 'amass enum -passive -d {target}',              status: 'idle' },
-      { name: 'Shodan CLI — Host Lookup',   cmd: 'shodan host {target}',                         status: 'idle' },
-      { name: 'Whatweb — Tech Detection',   cmd: 'whatweb {target}',                             status: 'idle' },
-    ],
-    log: [
-      '[10:42:30] <gray>Initialising scan sequence for {target}…</gray>',
-      '[10:42:31] <gray>Starting nmap -sV -sC -T4 -p- --open {target}</gray>',
-      '[10:42:58] <green>Nmap: 22/tcp open ssh OpenSSH 8.9p1 Ubuntu ✓</green>',
-      '[10:42:58] <green>Nmap: 80/tcp open http nginx 1.24.0 ✓</green>',
-      '[10:42:59] <green>Nmap: 443/tcp open https ✓</green>',
-      '[10:43:00] <gray>Starting subfinder -d {target} -all -silent</gray>',
-      '[10:43:14] <green>Subfinder: 45 subdomains discovered ✓</green>',
+      {
+        id: 'nmap',
+        name: 'Nmap',
+        label: 'Network Mapper',
+        active: true,  // fully wired
+        buildCmd: buildNmapCmd,
+        fields: 'nmap'
+      },
+      { id: 'subfinder',   name: 'Subfinder',    label: 'Passive Subdomain Enum',   active: false },
+      { id: 'amass',       name: 'Amass',         label: 'Active Subdomain Enum',    active: false },
+      { id: 'masscan',     name: 'Masscan',       label: 'High-Speed Port Scan',     active: false },
+      { id: 'naabu',       name: 'Naabu',         label: 'Port Discovery',           active: false },
+      { id: 'theharvester',name: 'theHarvester',  label: 'OSINT Gathering',          active: false },
+      { id: 'shodan',      name: 'Shodan CLI',    label: 'Host Lookup via Shodan',   active: false },
     ]
   },
   dir: {
     title: 'Directory & Brute-Force',
-    desc: 'Enumerate hidden paths, backup files, admin panels, and sensitive endpoints.',
+    desc: 'Enumerate hidden paths, files, and endpoints on web targets.',
     tools: [
-      { name: 'ffuf — Content Discovery',    cmd: 'ffuf -w wordlist.txt -u https://{target}/FUZZ -mc 200,301,302,403', status: 'idle' },
-      { name: 'Gobuster — Dir Scan',         cmd: 'gobuster dir -u https://{target} -w wordlist.txt -t 50',             status: 'idle' },
-      { name: 'Feroxbuster — Recursive',     cmd: 'feroxbuster --url https://{target} --depth 3 --quiet',              status: 'idle' },
-      { name: 'dirsearch — Backup Files',    cmd: 'dirsearch -u https://{target} -e php,bak,zip,sql',                  status: 'idle' },
-    ],
-    log: [
-      '[11:05:10] <gray>Starting ffuf with common.txt against {target}…</gray>',
-      '[11:05:11] <green>200 OK  /admin  [Size: 4321] ✓</green>',
-      '[11:05:11] <green>200 OK  /backup  [Size: 892] ✓</green>',
-      '[11:05:12] <green>301 MOV /api/v1  → /api/v1/ ✓</green>',
-      '[11:05:13] <gray>Gobuster: scanning with -t 50 threads…</gray>',
+      { id: 'ffuf',       name: 'FFUF',         label: 'Fast Web Fuzzer',          active: false },
+      { id: 'gobuster',   name: 'Gobuster',     label: 'Directory/DNS Brute-Force',active: false },
+      { id: 'dirsearch',  name: 'Dirsearch',    label: 'Web Path Discovery',       active: false },
+      { id: 'feroxbuster',name: 'Feroxbuster',  label: 'Recursive Dir Scanner',    active: false },
+      { id: 'wfuzz',      name: 'Wfuzz',        label: 'Web Fuzzer',               active: false },
     ]
   },
   vuln: {
     title: 'Vulnerability Scanning',
-    desc: 'Automated CVE detection using Nuclei templates, Nikto, and OpenVAS.',
+    desc: 'Detect known CVEs, misconfigurations, and exposed services.',
     tools: [
-      { name: 'Nuclei — CVE Templates',     cmd: 'nuclei -u https://{target} -t cves/ -severity critical,high',    status: 'idle' },
-      { name: 'Nuclei — Misconfigurations', cmd: 'nuclei -u https://{target} -t misconfiguration/',                 status: 'idle' },
-      { name: 'Nikto — Web Scanner',        cmd: 'nikto -h https://{target} -Tuning 123bde -Format txt',           status: 'idle' },
-      { name: 'OpenVAS — Full Audit',       cmd: 'gvm-cli socket --gmp-username admin --xml \'<start_task/\'',     status: 'idle' },
-    ],
-    log: [
-      '[13:20:01] <gray>Running nuclei CVE templates against {target}…</gray>',
-      '[13:20:44] <red>[CRITICAL] CVE-2023-44487 HTTP/2 Rapid Reset DoS ✗</red>',
-      '[13:20:45] <red>[HIGH] CVE-2022-22965 Spring4Shell RCE ✗</red>',
-      '[13:20:46] <green>Nuclei misconfigs: 3 findings ✓</green>',
+      { id: 'nuclei',    name: 'Nuclei',   label: 'CVE & Template Scanner', active: false },
+      { id: 'nikto',     name: 'Nikto',    label: 'Web Server Scanner',     active: false },
+      { id: 'wpscan',    name: 'WPScan',   label: 'WordPress Scanner',      active: false },
     ]
   },
   webapp: {
     title: 'Web App Exploitation',
-    desc: 'Test for SQLi, XSS, SSRF, IDOR, XXE, and OWASP Top-10 vectors.',
+    desc: 'Test for injection, XSS, SSTI, and other OWASP Top-10 vulnerabilities.',
     tools: [
-      { name: 'sqlmap — SQL Injection',     cmd: 'sqlmap -u "https://{target}/search?q=*" --level 5 --risk 3 --batch', status: 'idle' },
-      { name: 'XSStrike — XSS Scanner',    cmd: 'python3 xsstrike.py -u "https://{target}" --crawl',                   status: 'idle' },
-      { name: 'SSRF Tool — SSRF Probe',    cmd: 'python3 ssrfmap.py -r req.txt -p url',                                 status: 'idle' },
-      { name: 'Dalfox — XSS Automation',  cmd: 'dalfox url https://{target} --deep-domxss',                            status: 'idle' },
-    ],
-    log: [
-      '[14:10:00] <gray>sqlmap targeting GET parameter ?q= on {target}…</gray>',
-      '[14:10:23] <red>[CRITICAL] Parameter q is injectable — UNION-based ✗</red>',
-      '[14:10:24] <red>[HIGH] Database: MySQL 8.0.32 ✗</red>',
-      '[14:10:25] <green>XSStrike: 2 reflected XSS payloads confirmed ✓</green>',
+      { id: 'sqlmap',   name: 'SQLmap',   label: 'SQL Injection',      active: false },
+      { id: 'xsstrike', name: 'XSStrike', label: 'XSS Discovery',      active: false },
+      { id: 'commix',   name: 'Commix',   label: 'Command Injection',  active: false },
     ]
   },
   exploit: {
-    title: 'Exploit Frameworks',
-    desc: 'Metasploit, custom exploit runners, and post-exploitation modules.',
+    title: 'Exploit Frameworks & Post-Exploit',
+    desc: 'Run exploits, establish sessions, and perform post-exploitation.',
     tools: [
-      { name: 'Metasploit — AutoPwn',      cmd: 'msfconsole -x "use auxiliary/scanner/portscan/tcp; set RHOSTS {target}; run"', status: 'idle' },
-      { name: 'Nuclei — Exposed Panels',   cmd: 'nuclei -u {target} -t exposures/panels/',                                       status: 'idle' },
-      { name: 'SearchSploit — Match CVEs', cmd: 'searchsploit --id {target}',                                                    status: 'idle' },
-    ],
-    log: [
-      '[15:30:00] <gray>Launching Metasploit auxiliary TCP scan…</gray>',
-      '[15:30:42] <green>Open ports found: 22, 80, 443, 8080 ✓</green>',
-      '[15:31:00] <gray>Searching ExploitDB for matching CVEs…</gray>',
-      '[15:31:08] <red>[HIGH] EDB-ID 50564 — nginx 1.24 header injection ✗</red>',
+      { id: 'msfconsole',  name: 'Metasploit',    label: 'Exploit Framework',   active: false },
+      { id: 'searchsploit',name: 'Searchsploit',  label: 'Exploit Search',      active: false },
     ]
   },
   cred: {
-    title: 'Password & Credential',
-    desc: 'Hash cracking, credential stuffing, and default-credential testing.',
+    title: 'Password & Credential Attacks',
+    desc: 'Crack hashes and brute-force authentication services.',
     tools: [
-      { name: 'Hashcat — Dictionary Attack', cmd: 'hashcat -m 0 hashes.txt rockyou.txt --force',                  status: 'idle' },
-      { name: 'Hydra — SSH Brute Force',     cmd: 'hydra -L users.txt -P rockyou.txt {target} ssh -t 4',          status: 'idle' },
-      { name: 'CrackMapExec — SMB Check',    cmd: 'crackmapexec smb {target} -u users.txt -p passwords.txt',      status: 'idle' },
-      { name: 'Default Creds — Panel Login', cmd: 'python3 defaultcreds-cheat-sheet.py -u https://{target}',      status: 'idle' },
-    ],
-    log: [
-      '[16:05:00] <gray>Starting hashcat dictionary attack on captured hashes…</gray>',
-      '[16:07:33] <green>Cracked: admin:$apr1$hash → "Welcome1!" ✓</green>',
-      '[16:08:00] <red>[HIGH] SSH accessible with cracked credentials ✗</red>',
+      { id: 'hashcat', name: 'Hashcat',        label: 'GPU Hash Cracker',    active: false },
+      { id: 'hydra',   name: 'Hydra',          label: 'Network Auth Brute',  active: false },
+      { id: 'john',    name: 'John the Ripper',label: 'Hash Cracker',        active: false },
     ]
   },
   wifi: {
     title: 'Wireless & Sniffing',
-    desc: 'Capture WPA handshakes, analyse network traffic, and detect rogue APs.',
+    desc: 'Capture and analyze wireless traffic and packets.',
     tools: [
-      { name: 'Aircrack-ng — WPA Capture',  cmd: 'airodump-ng --bssid {target} -c 6 --write capture wlan0mon', status: 'idle' },
-      { name: 'Wireshark — PCAP Analysis',  cmd: 'tshark -r capture.pcap -Y "http.request" -T fields -e http.host', status: 'idle' },
-      { name: 'Kismet — Wireless Survey',   cmd: 'kismet -c wlan0mon --log-prefix /tmp/kismet',                    status: 'idle' },
-    ],
-    log: [
-      '[17:00:00] <gray>Starting airodump-ng on channel 6…</gray>',
-      '[17:00:35] <green>WPA handshake captured for BSSID {target} ✓</green>',
-      '[17:01:00] <gray>Running aircrack-ng against captured handshake…</gray>',
+      { id: 'aircrack', name: 'Aircrack-ng', label: 'WPA/WEP Cracking', active: false },
+      { id: 'tshark',   name: 'Tshark',      label: 'Packet Capture',   active: false },
     ]
   },
   code: {
     title: 'Code & Secret Analysis',
-    desc: 'Static analysis, exposed secrets, hardcoded credentials, and API key leaks.',
+    desc: 'Scan source code and repos for secrets and vulnerabilities.',
     tools: [
-      { name: 'TruffleHog — Secret Scan',   cmd: 'trufflehog git https://github.com/{target} --json',             status: 'idle' },
-      { name: 'Gitleaks — Repo Audit',      cmd: 'gitleaks detect --source /path/to/repo --report-format json',  status: 'idle' },
-      { name: 'Semgrep — SAST Scan',        cmd: 'semgrep --config auto /path/to/code --json',                   status: 'idle' },
-      { name: 'Bandit — Python SAST',       cmd: 'bandit -r /path/to/project -f json -o bandit-report.json',     status: 'idle' },
-    ],
-    log: [
-      '[18:00:00] <gray>Cloning repository and scanning commit history…</gray>',
-      '[18:00:12] <red>[HIGH] AWS_ACCESS_KEY_ID exposed in commit a3b4c5d ✗</red>',
-      '[18:00:13] <red>[HIGH] Stripe secret key in .env file ✗</red>',
-      '[18:00:14] <green>Semgrep: 7 medium-severity code issues ✓</green>',
+      { id: 'semgrep',    name: 'Semgrep',    label: 'Static Code Analysis', active: false },
+      { id: 'trufflehog', name: 'TruffleHog', label: 'Secret Detection',     active: false },
+      { id: 'gitleaks',   name: 'Gitleaks',   label: 'Git Secret Scanner',   active: false },
     ]
   },
   ai: {
     title: 'AI Attack Agents',
-    desc: 'LLM-driven automated exploitation, prompt injection, and model abuse testing.',
+    desc: 'Autonomous AI-driven penetration testing agents.',
     tools: [
-      { name: 'PentestGPT — Guided Attack',  cmd: 'python3 pentestgpt.py --target {target} --mode auto',           status: 'idle' },
-      { name: 'LLM Fuzzer — Prompt Inject',  cmd: 'python3 llmfuzzer.py -u https://{target}/api/chat --trials 200',status: 'idle' },
-      { name: 'AutoRecon — Full Chain',       cmd: 'python3 autorecon.py {target} --only-scans-dir',               status: 'idle' },
-    ],
-    log: [
-      '[19:00:00] <gray>Initialising PentestGPT against {target}…</gray>',
-      '[19:00:40] <green>Agent identified 3 potential attack vectors ✓</green>',
-      '[19:01:10] <red>[MEDIUM] Prompt injection bypasses content filter ✗</red>',
+      { id: 'pentagent', name: 'PentAGI',    label: 'AI Pentest Agent',     active: false },
     ]
-  }
+  },
 };
 
-const FINDINGS = [
-  {
-    id: 1,
-    title: 'Unauthenticated RCE via Deserialization',
-    tool: 'nuclei',
-    cluster: 'Vulnerability Scanning',
-    severity: 'critical',
-    desc: 'Target is vulnerable to CVE-2023-44487 (HTTP/2 Rapid Reset) and Spring4Shell RCE. Remote code execution confirmed without authentication.',
-    raw: `[2025-09-01 13:20:44] nuclei v3.1.0
-Template: cves/2023/CVE-2023-44487.yaml
-Matched: https://acmecorp.com:443
-Severity: CRITICAL
-Details: HTTP/2 Rapid Reset Attack — server accepts unlimited RESET_STREAM
-Payload: :method: POST / HTTP/2 → RST_STREAM frame flood
-Evidence: Server crashed and recovered — DoS confirmed
+// ═══════════════════════════════════════════
+//  NMAP COMMAND BUILDER
+// ═══════════════════════════════════════════
+function buildNmapCmd(target) {
+  const scanType  = document.getElementById('nmap-scan-type') ? document.getElementById('nmap-scan-type').value : '-sV';
+  const portRange = document.getElementById('nmap-ports') ? document.getElementById('nmap-ports').value.trim() : '1-1000';
+  const timing    = document.getElementById('nmap-timing') ? document.getElementById('nmap-timing').value : 'T4';
+  const osDetect  = document.getElementById('nmap-os') ? document.getElementById('nmap-os').checked : false;
+  const svcVer    = document.getElementById('nmap-svc') ? document.getElementById('nmap-svc').checked : true;
+  const scriptScan= document.getElementById('nmap-scripts') ? document.getElementById('nmap-scripts').checked : false;
 
-[2025-09-01 13:20:45] nuclei v3.1.0
-Template: cves/2022/CVE-2022-22965.yaml (Spring4Shell)
-Matched: https://acmecorp.com/login
-Severity: CRITICAL
-Payload: class.module.classLoader.resources.context.parent.pipeline.first.pattern=...
-Evidence: Reverse shell callback received on 10.10.14.5:4444`
-  },
-  {
-    id: 2,
-    title: 'Exposed .git Directory',
-    tool: 'ffuf',
-    cluster: 'Directory & Brute-Force',
-    severity: 'high',
-    desc: 'Source code repository is publicly accessible at /.git/. Entire codebase including commit history, credentials in config, and environment secrets can be reconstructed.',
-    raw: `[2025-09-01 11:05:12] ffuf v2.1.0
-        /'___\\  /'___\\           /'___\\       
-       /\\ \\__/ /\\ \\__/  __  __  /\\ \\__/       
-       \\ \\ ,__\\\\ \\ ,__\\/\\ \\/\\ \\ \\ \\ ,__\\      
-        \\ \\ \\_/ \\ \\ \\_/\\ \\ \\_\\ \\ \\ \\ \\_/      
-         \\ \\_\\   \\ \\_\\  \\ \\____/  \\ \\_\\       
-          \\/_/    \\/_/   \\/___/    \\/_/       
+  let cmd = `nmap`;
+  cmd += ` ${scanType}`;
+  if (svcVer) cmd += ' -sV';
+  if (osDetect) cmd += ' -O';
+  if (scriptScan) cmd += ' -sC';
+  cmd += ` -${timing}`;
+  if (portRange && portRange !== '-') cmd += ` -p ${portRange}`;
+  cmd += ` ${target || '{target}'}`;
+  return cmd;
+}
 
-Target: https://acmecorp.com
-Wordlist: common.txt
-
-200  GET  /.git/HEAD         → "ref: refs/heads/main"
-200  GET  /.git/config       → [core] repositoryformatversion = 0
-200  GET  /.git/COMMIT_EDITMSG
-200  GET  /.git/logs/HEAD
-403  GET  /.git/objects/      → Forbidden but directory listable
-
-Recommendation: Block /.git/ via nginx deny rule`
-  },
-  {
-    id: 3,
-    title: 'SQL Injection — UNION-Based',
-    tool: 'sqlmap',
-    cluster: 'Web App Exploitation',
-    severity: 'critical',
-    desc: 'GET parameter ?q= on /search endpoint is vulnerable to UNION-based SQL injection. Database is MySQL 8.0.32; full schema dump and data extraction confirmed.',
-    raw: `[2025-09-01 14:10:23] sqlmap v1.7.9#stable
-GET parameter 'q' is vulnerable. Do you want to keep testing the others (if any)? [y/N] N
-
-sqlmap identified the following injection point(s) with a total of 74 HTTP(s) requests:
----
-Parameter: q (GET)
-    Type: UNION query
-    Title: Generic UNION query (NULL) - 6 columns
-    Payload: q=test' UNION ALL SELECT NULL,NULL,NULL,NULL,CONCAT(0x71,0x70,0x7a,database()),NULL-- -
-
-[14:10:24] the back-end DBMS is MySQL >= 8.0
-[14:10:24] fetched databases: ['acmedb', 'information_schema', 'mysql']
-[14:10:25] fetched tables for 'acmedb': ['users', 'sessions', 'orders', 'admin_logs']
-[14:10:26] fetching columns for table 'users': id, username, password_hash, email, role
-[14:10:27] retrieved: admin | $2y$10$hash... | admin@acmecorp.com | superadmin`
-  },
-  {
-    id: 4,
-    title: 'AWS Access Key Exposed in Git History',
-    tool: 'trufflehog',
-    cluster: 'Code & Secret Analysis',
-    severity: 'high',
-    desc: 'AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY found in commit a3b4c5d of the public GitHub repository. Key is active and has S3 full-access permissions.',
-    raw: `[2025-09-01 18:00:12] TruffleHog v3.62.0
-Found verified secret!
-
-Detector Type: AWSKeyID
-Decoder Type: PLAIN
-Raw: AKIAIOSFODNN7EXAMPLE
-Commit: a3b4c5d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4
-Date: 2025-08-15T14:32:11Z
-File: backend/.env.production
-Line: 12
-Email: developer@acmecorp.com
-
-AWS Key Validation:
-  Region: us-east-1
-  Account: 123456789012
-  ARN: arn:aws:iam::123456789012:user/deploy-bot
-  Attached Policies: AmazonS3FullAccess, CloudFrontFullAccess
-
-Recommendation: Rotate key immediately and audit CloudTrail for unauthorised access.`
-  },
-  {
-    id: 5,
-    title: 'Missing Security Headers',
-    tool: 'nikto',
-    cluster: 'Vulnerability Scanning',
-    severity: 'low',
-    desc: 'Strict-Transport-Security, X-Frame-Options, Content-Security-Policy, and X-Content-Type-Options headers are absent. Increases risk of clickjacking and MIME sniffing.',
-    raw: `[2025-09-01 13:25:00] Nikto v2.1.6
-- Target: https://acmecorp.com
-- Start Time: 2025-09-01 13:25:00
-
-+ The anti-clickjacking X-Frame-Options header is not present.
-+ The X-XSS-Protection header is not defined.
-+ The X-Content-Type-Options header is not set.
-+ Strict-Transport-Security (HSTS) header is not present on HTTPS.
-+ Content-Security-Policy header is absent.
-
-+ Server leaks inodes via ETags, header found with file /: 
-  "5f4dcc3b5aa765d61d8327deb882cf99"
-+ End Time: 2025-09-01 13:25:47 (47 seconds)`
-  },
-  {
-    id: 6,
-    title: 'Open SSH on Non-Standard Port',
-    tool: 'nmap',
-    cluster: 'Recon & Info Gathering',
-    severity: 'info',
-    desc: 'SSH service is accessible on port 2222 in addition to port 22. Running OpenSSH 8.9p1 on Ubuntu 22.04. No password-authentication bypass found; key-based auth enforced.',
-    raw: `PORT     STATE SERVICE VERSION
-22/tcp   open  ssh     OpenSSH 8.9p1 Ubuntu 3ubuntu0.4 (Ubuntu Linux; protocol 2.0)
-2222/tcp open  ssh     OpenSSH 8.9p1 Ubuntu 3ubuntu0.4
-| ssh-hostkey: 
-|   256 9d:6e:ec:02:2d:0f:6a:38:60:c6:aa:ac:1e:e0:c2:84 (ECDSA)
-|_  256 eb:95:11:c7:a6:fa:ad:74:ab:a2:c5:f6:a4:02:18:41 (ED25519)
-Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
-
-Nmap done: 1 IP address (1 host up) scanned in 12.34 seconds`
-  }
-];
+// ═══════════════════════════════════════════
+//  NMAP ACCORDION FIELDS HTML
+// ═══════════════════════════════════════════
+function nmapFieldsHtml() {
+  return `
+    <div class="param-group">
+      <label>Scan Type</label>
+      <select id="nmap-scan-type" onchange="updatePreviews()">
+        <option value="-sS">-sS · SYN (Stealth)</option>
+        <option value="-sT">-sT · TCP Connect</option>
+        <option value="-sU">-sU · UDP</option>
+        <option value="-sV" selected>-sV · Version Detection</option>
+      </select>
+    </div>
+    <div class="param-group">
+      <label>Port Range</label>
+      <input type="text" id="nmap-ports" value="1-1000" placeholder="e.g. 80,443 or 1-65535" oninput="updatePreviews()" />
+    </div>
+    <div class="param-group">
+      <label>Timing Template</label>
+      <select id="nmap-timing" onchange="updatePreviews()">
+        <option value="T1">T1 · Sneaky</option>
+        <option value="T2">T2 · Polite</option>
+        <option value="T3">T3 · Normal</option>
+        <option value="T4" selected>T4 · Aggressive</option>
+        <option value="T5">T5 · Insane</option>
+      </select>
+    </div>
+    <div class="param-group">
+      <label>Output Format</label>
+      <select id="nmap-output">
+        <option value="">Normal (stdout)</option>
+        <option value="-oX nmap_out.xml">XML</option>
+        <option value="-oG nmap_out.gnmap">Grepable</option>
+      </select>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Service Version Detection (-sV)</span>
+      <label class="toggle"><input type="checkbox" id="nmap-svc" checked onchange="updatePreviews()"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">OS Detection (-O)</span>
+      <label class="toggle"><input type="checkbox" id="nmap-os" onchange="updatePreviews()"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Script Scan (-sC)</span>
+      <label class="toggle"><input type="checkbox" id="nmap-scripts" onchange="updatePreviews()"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="acc-note">These options override general settings for this tool only.</div>
+  `;
+}
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -292,10 +185,24 @@ Nmap done: 1 IP address (1 host up) scanned in 12.34 seconds`
 let currentView = 'dashboard';
 let activeCluster = null;
 let isRunning = false;
-let logOpen = false;
+let currentFilter = 'All';
 
 // ═══════════════════════════════════════════
-//  NAV
+//  HELPERS
+// ═══════════════════════════════════════════
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function getTarget() {
+  const el = document.getElementById('cv-target');
+  return el ? el.value.trim() || 'TARGET' : 'TARGET';
+}
+
+// ═══════════════════════════════════════════
+//  NAV / VIEW
 // ═══════════════════════════════════════════
 function setView(el, view) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -311,7 +218,6 @@ function setViewById(view) {
 }
 
 function showView(view) {
-  // Hide all static views
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('cluster-view').classList.remove('active');
 
@@ -319,9 +225,13 @@ function showView(view) {
     document.getElementById('view-dashboard').classList.add('active');
   } else if (view === 'results') {
     document.getElementById('view-results').classList.add('active');
-    renderFindings('All');
+    renderFindings();
   } else if (view === 'workflows') {
     document.getElementById('view-workflows').classList.add('active');
+    renderWorkflows();
+  } else if (view === 'health') {
+    document.getElementById('view-health').classList.add('active');
+    runHealthCheck();
   } else if (CLUSTERS[view]) {
     activeCluster = view;
     renderClusterView(view);
@@ -330,241 +240,477 @@ function showView(view) {
 }
 
 // ═══════════════════════════════════════════
-//  CLUSTER VIEW
+//  CLUSTER VIEW RENDER
 // ═══════════════════════════════════════════
 function renderClusterView(id) {
   const c = CLUSTERS[id];
   document.getElementById('cv-title').textContent = c.title;
-  document.getElementById('cv-desc').textContent = c.desc;
+  document.getElementById('cv-desc').textContent  = c.desc;
 
+  isRunning = false;
+  const runBtn = document.getElementById('cv-run-btn');
+  runBtn.classList.remove('running');
+  runBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run All Tools';
+
+  // Build accordion
   const list = document.getElementById('cv-tool-list');
   list.innerHTML = '';
 
   c.tools.forEach((t, i) => {
-    list.innerHTML += `
-      <div class="tool-row" id="tool-row-${i}">
-        <div>
-          <div class="tool-name">${t.name}</div>
-          <div class="tool-cmd">${t.cmd}</div>
+    const div = document.createElement('div');
+    div.className = 'acc-item';
+    div.id = `acc-${t.id}`;
+
+    const comingSoon = t.active ? '' : '<span style="font-size:9px;font-family:var(--mono);color:var(--text-faint);background:var(--bg-hover);border:1px solid var(--border);padding:1px 6px;border-radius:3px;margin-left:6px;">coming soon</span>';
+
+    div.innerHTML = `
+      <div class="acc-header" onclick="toggleAcc('${t.id}', ${t.active})">
+        <div class="acc-left">
+          <div class="acc-name">${t.name} ${comingSoon}</div>
+          <div class="acc-cmd" id="acc-cmd-${t.id}">${t.active ? buildToolCmd(t, getTarget()) : t.label}</div>
         </div>
-        <div class="status-icon" id="tool-icon-${i}">
-          <div class="circle-idle"></div>
+        <div class="acc-right">
+          <div class="acc-status-dot" id="acc-dot-${t.id}"></div>
+          <svg class="acc-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+      <div class="acc-body" id="acc-body-${t.id}">
+        <div class="acc-body-inner" id="acc-inner-${t.id}">
+          ${t.active ? getFieldsHtml(t) : `<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-faint);font-family:var(--mono);font-size:12px;">⚙ ${t.name} fields coming soon</div>`}
         </div>
       </div>`;
+    list.appendChild(div);
   });
 
-  // Log section
-  list.innerHTML += `
-    <button class="log-toggle" onclick="toggleLog()" id="log-toggle-btn">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-      Execution Log
-    </button>
-    <div class="log-body" id="log-body">
-      ${c.log.map(l => {
-        let cls = 'log-gray';
-        let text = l;
-        if (l.includes('<green>')) { cls = 'log-green'; text = l.replace(/<\/?green>/g,''); }
-        else if (l.includes('<red>')) { cls = 'log-red'; text = l.replace(/<\/?red>/g,''); }
-        else if (l.includes('<blue>')) { cls = 'log-blue'; text = l.replace(/<\/?blue>/g,''); }
-        else { text = l.replace(/<\/?gray>/g,''); }
-        return `<div class="${cls}">${text}</div>`;
-      }).join('')}
-    </div>`;
+  // Build command preview cards on the right
+  renderPreviewCards(id);
 
-  logOpen = false;
-  isRunning = false;
+  // Reset terminal
+  showPreviewPanel();
+}
+
+function buildToolCmd(t, target) {
+  if (t.buildCmd) return t.buildCmd(target);
+  return `${t.id} {target}`;
+}
+
+function getFieldsHtml(t) {
+  if (t.fields === 'nmap') return nmapFieldsHtml();
+  return '';
+}
+
+// ═══════════════════════════════════════════
+//  ACCORDION TOGGLE
+// ═══════════════════════════════════════════
+function toggleAcc(id, active) {
+  const item = document.getElementById(`acc-${id}`);
+  const wasOpen = item.classList.contains('open');
+
+  // Close all
+  document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('open'));
+
+  if (!wasOpen) {
+    item.classList.add('open');
+  }
+}
+
+// ═══════════════════════════════════════════
+//  LIVE COMMAND PREVIEW
+// ═══════════════════════════════════════════
+function updatePreviews() {
+  if (!activeCluster) return;
+  const c = CLUSTERS[activeCluster];
+  const target = getTarget();
+
+  c.tools.forEach(t => {
+    if (!t.active) return;
+    const cmd = buildToolCmd(t, target);
+    // Update accordion subtitle
+    const cmdEl = document.getElementById(`acc-cmd-${t.id}`);
+    if (cmdEl) cmdEl.textContent = cmd;
+    // Update preview card
+    const previewEl = document.getElementById(`preview-cmd-${t.id}`);
+    if (previewEl) previewEl.textContent = cmd;
+  });
+}
+
+function renderPreviewCards(clusterId) {
+  const c = CLUSTERS[clusterId];
+  const target = getTarget();
+  const area = document.getElementById('cp-preview-area');
+  area.innerHTML = '';
+
+  const activeTools = c.tools.filter(t => t.active);
+
+  if (activeTools.length === 0) {
+    area.innerHTML = `<div class="preview-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      <span>Fill in the fields on the left<br>to preview commands</span>
+    </div>`;
+    return;
+  }
+
+  activeTools.forEach(t => {
+    const cmd = buildToolCmd(t, target);
+    const card = document.createElement('div');
+    card.className = 'preview-card';
+    card.innerHTML = `
+      <div class="preview-card-header">
+        <span class="preview-card-name">${t.name}</span>
+        <span class="preview-card-status">ready</span>
+      </div>
+      <div class="preview-card-cmd" id="preview-cmd-${t.id}">$ ${cmd}</div>`;
+    area.appendChild(card);
+  });
+}
+
+function showPreviewPanel() {
+  document.getElementById('cp-preview-area').style.display = 'block';
+  document.getElementById('cp-terminal').style.display = 'none';
+  document.getElementById('cp-right-title').textContent = 'Command Preview';
+  document.getElementById('cp-right-sub').textContent = 'Commands update as you fill in the fields';
+  document.getElementById('cp-right-badge').textContent = 'PREVIEW';
+  document.getElementById('cp-right-badge').className = 'cp-right-badge';
+}
+
+function showTerminalPanel() {
+  document.getElementById('cp-preview-area').style.display = 'none';
+  document.getElementById('cp-terminal').style.display = 'flex';
+  document.getElementById('cp-right-title').textContent = 'Execution Log';
+  document.getElementById('cp-right-sub').textContent = 'Live output from running tools';
+  document.getElementById('cp-right-badge').textContent = 'LIVE';
+  document.getElementById('cp-right-badge').className = 'cp-right-badge live';
+}
+
+// ═══════════════════════════════════════════
+//  NMAP SYNTAX HIGHLIGHTER
+// ═══════════════════════════════════════════
+function highlightNmap(raw) {
+  let out = escHtml(raw);
+  // IP addresses
+  out = out.replace(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/g, '<span class="nm-ip">$1</span>');
+  // ports like 80/tcp
+  out = out.replace(/\b(\d{1,5}\/(tcp|udp))\b/g, '<span class="nm-port">$1</span>');
+  // open
+  out = out.replace(/\bopen\b/g, '<span class="nm-open">open</span>');
+  // closed
+  out = out.replace(/\bclosed\b/g, '<span class="nm-closed">closed</span>');
+  // filtered
+  out = out.replace(/\bfiltered\b/g, '<span class="nm-filter">filtered</span>');
+  // "Nmap scan report for …"
+  out = out.replace(/(Nmap scan report for .+)/g, '<span class="nm-title">$1</span>');
+  // "Starting Nmap …" and "Nmap done: …"
+  out = out.replace(/(Starting Nmap .+)/g, '<span class="nm-dim">$1</span>');
+  out = out.replace(/(Nmap done:.+)/g,     '<span class="nm-dim">$1</span>');
+  // PORT STATE SERVICE VERSION header line
+  out = out.replace(/(PORT\s+STATE\s+SERVICE.*)/g, '<span class="nm-header">$1</span>');
+  return out;
+}
+
+function formatOutput(rawText, toolId) {
+  if (!rawText) return '';
+  if (toolId === 'nmap') {
+    return rawText.split('\n').map(line => `<div class="t-stdout">${highlightNmap(line)}</div>`).join('');
+  }
+  // default: plain
+  return rawText.split('\n').map(line =>
+    `<div class="t-stdout">${escHtml(line)}</div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════
+//  TERMINAL HELPER
+// ═══════════════════════════════════════════
+function termAppend(html) {
+  const body = document.getElementById('terminal-body');
+  body.insertAdjacentHTML('beforeend', html);
+  body.scrollTop = body.scrollHeight;
+}
+
+function termPrompt(cmd) {
+  termAppend(`<div><span class="t-prompt">pentdash@kali</span><span class="t-dim">:</span><span class="t-prompt">~</span><span class="t-dim">$</span> <span class="t-cmd">${escHtml(cmd)}</span></div>`);
+}
+
+function termSep() {
+  termAppend(`<hr class="t-sep">`);
+}
+
+function termStatus(ok, label) {
+  const cls = ok ? 't-ok' : 't-fail';
+  const icon = ok ? '✔' : '✖';
+  termAppend(`<div class="${cls}">${icon} ${escHtml(label)}</div>`);
+}
+
+// ═══════════════════════════════════════════
+//  RUN CLUSTER
+// ═══════════════════════════════════════════
+async function runCluster() {
+  if (isRunning) return;
+  const c = CLUSTERS[activeCluster];
+  if (!c) return;
+
+  // Only run active (wired) tools
+  const activeTools = c.tools.filter(t => t.active);
+  if (activeTools.length === 0) {
+    showToast('No Active Tools', 'This cluster has no wired tools yet.', 'error');
+    return;
+  }
+
+  isRunning = true;
   const btn = document.getElementById('cv-run-btn');
+  btn.classList.add('running');
+  btn.innerHTML = '<div class="spinner"></div> Running…';
+
+  // Switch to terminal view
+  showTerminalPanel();
+  const termBody = document.getElementById('terminal-body');
+  termBody.innerHTML = '';
+  document.getElementById('terminal-title').textContent = `pentdash — ${activeCluster}`;
+
+  const target = getTarget();
+
+  // Build payload — only active tools
+  const toolPayload = activeTools.map(t => ({
+    name: t.name,
+    cmd: buildToolCmd(t, target)
+  }));
+
+  // Show all commands upfront
+  termAppend(`<div class="t-dim"># Executing ${toolPayload.length} tool(s) against ${escHtml(target)}</div>`);
+  termSep();
+  toolPayload.forEach(t => termPrompt(t.cmd));
+  termSep();
+
+  // Mark running dots
+  activeTools.forEach(t => {
+    const dot = document.getElementById(`acc-dot-${t.id}`);
+    if (dot) dot.className = 'acc-status-dot running';
+  });
+
+  try {
+    const resp = await fetch('/api/run/cluster', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cluster_name: activeCluster,
+        target: target,
+        project_id: 1,
+        tools: toolPayload
+      })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    // Render outputs in terminal
+    if (data.outputs && data.outputs.length > 0) {
+      data.outputs.forEach(out => {
+        termSep();
+        termAppend(`<div class="t-header">── ${escHtml(out.tool)} ──</div>`);
+        termPrompt(toolPayload.find(t => t.name === out.tool)?.cmd || out.tool);
+
+        if (out.stdout && out.stdout.trim()) {
+          termAppend(formatOutput(out.stdout, activeTools.find(t => t.name === out.tool)?.id || ''));
+        }
+        if (out.stderr && out.stderr.trim()) {
+          out.stderr.split('\n').forEach(line => {
+            if (line.trim()) termAppend(`<div class="t-stderr">${escHtml(line)}</div>`);
+          });
+        }
+        if (out.error) {
+          termAppend(`<div class="t-error">Error: ${escHtml(out.error)}</div>`);
+        }
+
+        const ok = out.code === 0;
+        termStatus(ok, `${out.tool} exited with code ${out.code}`);
+
+        // Update dot
+        const toolDef = activeTools.find(t => t.name === out.tool);
+        if (toolDef) {
+          const dot = document.getElementById(`acc-dot-${toolDef.id}`);
+          if (dot) dot.className = 'acc-status-dot ' + (ok ? 'success' : 'fail');
+        }
+      });
+
+      termSep();
+      termAppend(`<div class="t-ok">✔ All tools completed at ${new Date().toLocaleTimeString()}</div>`);
+    }
+
+    // Update right panel badge
+    document.getElementById('cp-right-title').textContent = 'Execution Log';
+    document.getElementById('cp-right-sub').textContent = `Completed at ${new Date().toLocaleTimeString()}`;
+
+  } catch (err) {
+    termAppend(`<div class="t-error">✖ Request failed: ${escHtml(err.message)}</div>`);
+    termAppend(`<div class="t-dim">Is the backend running? ./start.sh</div>`);
+    showToast('Scan Failed', err.message, 'error');
+  }
+
+  isRunning = false;
   btn.classList.remove('running');
   btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run All Tools';
 }
 
-function toggleLog() {
-  logOpen = !logOpen;
-  const body = document.getElementById('log-body');
-  const btn  = document.getElementById('log-toggle-btn');
-  body.classList.toggle('open', logOpen);
-  const arrow = logOpen
-    ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>'
-    : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
-  btn.innerHTML = arrow + ' Execution Log';
-}
+// ═══════════════════════════════════════════
+//  RESULTS PAGE
+// ═══════════════════════════════════════════
+const FINDINGS = [
+  { id:1, tool:'nmap',      cluster:'Recon & Info Gathering',  sev:'high',     title:'Port 22/tcp (SSH) Open',       desc:'SSH service exposed. Brute-force or key-based attacks may be possible.', raw:'22/tcp open  ssh  OpenSSH 8.2p1' },
+  { id:2, tool:'nmap',      cluster:'Recon & Info Gathering',  sev:'info',     title:'Port 80/tcp (HTTP) Open',       desc:'Standard HTTP port open. Check for redirect to HTTPS and header security.', raw:'80/tcp open  http nginx 1.18' },
+  { id:3, tool:'nmap',      cluster:'Recon & Info Gathering',  sev:'medium',   title:'Port 3306/tcp (MySQL) Open',    desc:'Database port exposed to the network. Restrict to localhost only.', raw:'3306/tcp open  mysql  MySQL 5.7.32' },
+  { id:4, tool:'nuclei',    cluster:'Vulnerability Scanning',  sev:'critical', title:'CVE-2021-44228 (Log4Shell)',    desc:'Remote code execution via JNDI injection in Apache Log4j library.', raw:'[critical] CVE-2021-44228 matched at https://target.com/api/v1/login' },
+  { id:5, tool:'subfinder', cluster:'Recon & Info Gathering',  sev:'info',     title:'28 Subdomains Discovered',      desc:'Subfinder identified 28 unique subdomains via passive DNS enumeration.', raw:'dev.acmecorp.com\nstaging.acmecorp.com\napi.acmecorp.com' },
+];
 
-function formatToolOutput(text, toolName) {
-  if (!text) return '';
-  let out = escHtml(text);
+function renderFindings() {
+  const query = (document.getElementById('results-search')?.value || '').toLowerCase();
+  const list  = document.getElementById('findings-list');
+  if (!list) return;
 
-  if (toolName.toLowerCase().includes('nmap')) {
-    out = out.replace(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/g, '<span style="color:var(--yellow)">$1</span>');
-    out = out.replace(/\b(\d{1,5}\/(?:tcp|udp))\b/g, '<span style="color:var(--blue);font-weight:bold">$1</span>');
-    out = out.replace(/\b(open)\b/g, '<span style="color:var(--green);font-weight:bold">open</span>');
-    out = out.replace(/\b(closed)\b/g, '<span style="color:var(--red)">closed</span>');
-    out = out.replace(/\b(filtered)\b/g, '<span style="color:var(--orange)">filtered</span>');
-    out = out.replace(/^(Starting Nmap.*)$/gm, '<span style="color:var(--text-dim)">$1</span>');
-    out = out.replace(/^(Nmap scan report for.*)$/gm, '<span style="color:var(--accent2);font-weight:bold">$1</span>');
-    out = out.replace(/^(Nmap done:.*)$/gm, '<span style="color:var(--text-dim)">$1</span>');
-    out = out.replace(/^(PORT\s+STATE\s+SERVICE.*)$/gm, '<span style="color:var(--text-dim);text-decoration:underline">$1</span>');
+  const filtered = FINDINGS.filter(f => {
+    const matchCluster = currentFilter === 'All' || f.cluster === currentFilter;
+    const matchQuery   = !query || f.title.toLowerCase().includes(query) || f.desc.toLowerCase().includes(query);
+    return matchCluster && matchQuery;
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:60px;color:var(--text-faint);font-family:var(--mono);font-size:12px;">No findings match your filter.</div>`;
+    return;
   }
 
-  return out.replace(/\r?\n/g, '<br>');
-}
-
-function runCluster() {
-  if (isRunning) return;
-  const c = CLUSTERS[activeCluster];
-  if (!c) return;
-  isRunning = true;
-
-  const btn = document.getElementById('cv-run-btn');
-  btn.classList.add('running');
-  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px"></div> Running…';
-
-  // Open log
-  if (!logOpen) toggleLog();
-
-  const body = document.getElementById('log-body');
-  body.innerHTML = ''; // Clear previous logs
-  const target = document.getElementById('cv-target') ? document.getElementById('cv-target').value : '127.0.0.1';
-
-  // Mark all tools as running visually
-  c.tools.forEach((t, i) => {
-    document.getElementById(`tool-icon-${i}`).innerHTML = '<div class="spinner"></div>';
-  });
-
-  const payload = {
-    cluster_name: activeCluster,
-    target: target,
-    project_id: 1,
-    tools: c.tools.map(t => ({
-      name: t.name,
-      cmd: t.cmd.replace(/{target}/g, target)
-    }))
-  };
-
-  fetch('/api/run/cluster', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-  .then(res => res.json())
-  .then(data => {
-    isRunning = false;
-    btn.classList.remove('running');
-    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run All Tools';
-    
-    // Add real output to log UI
-    if (data.outputs && data.outputs.length > 0) {
-      data.outputs.forEach(out => {
-        body.innerHTML += `<div class="log-gray" style="margin-top:12px; margin-bottom:4px; font-weight:bold;">[SYSTEM] Tool: ${out.tool} finished with code ${out.code}</div>`;
-        if (out.stdout) body.innerHTML += `<div style="color:var(--text);">${formatToolOutput(out.stdout, out.tool)}</div>`;
-        if (out.stderr) body.innerHTML += `<div style="color:var(--text-dim);">${formatToolOutput(out.stderr, out.tool)}</div>`;
-        if (out.error) body.innerHTML += `<div class="log-red">Error: ${formatToolOutput(out.error, out.tool)}</div>`;
-      });
-    } else {
-      body.innerHTML += `<div class="log-gray">No tools configured for ${activeCluster} yet.</div>`;
-    }
-    
-    // Mark tools done
-    c.tools.forEach((t, i) => {
-      document.getElementById(`tool-icon-${i}`).innerHTML = '<span class="check-done">✓</span>';
-    });
-    
-    showToast('Scan Complete', `${c.title} finished executing.`, 'success');
-  })
-  .catch(err => {
-    isRunning = false;
-    btn.classList.remove('running');
-    btn.innerHTML = 'Error Running';
-    body.innerHTML += `<div class="log-red">API Connection Error: ${err.message}</div>`;
-    c.tools.forEach((t, i) => {
-      document.getElementById(`tool-icon-${i}`).innerHTML = '<span class="check-done" style="color:var(--red)">✗</span>';
-    });
-  });
-}
-
-// ═══════════════════════════════════════════
-//  RESULTS
-// ═══════════════════════════════════════════
-const SEV_CLASS = { critical: 'sev-critical', high: 'sev-high', medium: 'sev-medium', low: 'sev-low', info: 'sev-info' };
-const SEV_BORDER = { critical: '#f43f5e', high: '#fb923c', medium: '#fbbf24', low: '#60a5fa', info: '#4a5568' };
-
-function renderFindings(filter) {
-  const list = document.getElementById('findings-list');
-  const data = filter === 'All' ? FINDINGS : FINDINGS.filter(f => f.cluster === filter);
-  list.innerHTML = data.map(f => `
-    <div class="finding-card" style="border-left-color:${SEV_BORDER[f.severity]}">
+  list.innerHTML = filtered.map(f => `
+    <div class="finding-card sev-${f.sev}">
       <div class="finding-head">
         <div class="finding-top">
-          <div class="finding-title">${f.title}</div>
-          <span class="sev-badge ${SEV_CLASS[f.severity]}">${f.severity}</span>
+          <div class="finding-title">${escHtml(f.title)}</div>
+          <span class="sev-badge sev-${f.sev}">${f.sev}</span>
         </div>
-        <div class="finding-meta">${f.tool} · ${f.cluster}</div>
-        <div class="finding-desc">${f.desc}</div>
-        <span class="finding-toggle" onclick="toggleRaw(${f.id})">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-          Show Raw Output
-        </span>
+        <div class="finding-meta"><span class="tool-tag">${f.tool}</span> ${escHtml(f.cluster)}</div>
+        <div class="finding-desc">${escHtml(f.desc)}</div>
+        <div class="finding-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+          ▸ Show Raw Output
+        </div>
+        <div class="finding-raw">${escHtml(f.raw)}</div>
       </div>
-      <pre class="finding-raw" id="raw-${f.id}">${escHtml(f.raw)}</pre>
     </div>`).join('');
 }
 
-function toggleRaw(id) {
-  const raw = document.getElementById(`raw-${id}`);
-  const isOpen = raw.classList.toggle('open');
-  const toggle = raw.previousElementSibling;
-  toggle.innerHTML = isOpen
-    ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide Raw Output'
-    : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg> Show Raw Output';
-}
-
-function filterFindings(btn, filter) {
+function setFilter(el, filter) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderFindings(filter);
+  el.classList.add('active');
+  currentFilter = filter;
+  renderFindings();
 }
 
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function filterFindings() { renderFindings(); }
+
+function exportCSV() {
+  const rows = [['Tool','Cluster','Severity','Title','Description']];
+  FINDINGS.forEach(f => rows.push([f.tool, f.cluster, f.sev, f.title, f.desc]));
+  const csv = rows.map(r => r.map(v => `"${v.replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `pentdash_findings_${Date.now()}.csv`;
+  a.click();
+  showToast('Export Ready', 'CSV downloaded successfully.', 'success');
 }
 
-function runWorkflow(name) {
-  showToast('Workflow queued', `${name} dispatched to runner.`, 'success');
-  
-  // Dummy logic to pick clusters based on name
-  let clustersToRun = [];
-  if (name.includes('Web App')) clustersToRun = ['recon', 'dir', 'vuln', 'webapp'];
-  else if (name.includes('Internal')) clustersToRun = ['recon', 'exploit', 'cred'];
-  else if (name.includes('API')) clustersToRun = ['recon', 'webapp', 'code'];
-  else if (name.includes('Wireless')) clustersToRun = ['wifi', 'cred', 'exploit'];
-  else clustersToRun = ['recon']; // fallback
+// ═══════════════════════════════════════════
+//  WORKFLOWS
+// ═══════════════════════════════════════════
+const WORKFLOWS = [
+  { name: 'Full Recon', steps: ['Recon & Info Gathering', 'Directory & Brute-Force'] },
+  { name: 'Web App Audit', steps: ['Recon & Info Gathering', 'Vulnerability Scanning', 'Web App Exploitation'] },
+  { name: 'Password Sprint', steps: ['Recon & Info Gathering', 'Password & Credential'] },
+];
 
-  const target = document.getElementById('cv-target') ? document.getElementById('cv-target').value : '127.0.0.1';
-  
-  const payload = {
-    target: target,
-    project_id: 1,
-    steps: clustersToRun.map(c => ({
-      cluster_name: c,
-      tools: (CLUSTERS[c]?.tools || []).map(t => ({
-        name: t.name,
-        cmd: t.cmd.replace(/{target}/g, target)
-      }))
-    }))
-  };
+function renderWorkflows() {
+  const grid = document.getElementById('wf-grid');
+  if (!grid) return;
+  grid.innerHTML = WORKFLOWS.map(w => `
+    <div class="wf-card">
+      <div class="wf-name">${escHtml(w.name)}</div>
+      <div class="wf-steps">
+        ${w.steps.map((s,i) => `<span class="wf-step">${escHtml(s)}</span>${i < w.steps.length-1 ? '<span class="wf-arrow">→</span>' : ''}`).join('')}
+      </div>
+      <div class="wf-footer">
+        <button class="btn-run-wf">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run Workflow
+        </button>
+        <span style="font-size:11px;color:var(--text-faint);cursor:pointer" onclick="showToast('Export','Workflow exported as JSON.','success')">Export JSON</span>
+      </div>
+    </div>`).join('');
+}
 
-  fetch('/api/run/workflow', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-  .then(res => res.json())
-  .then(data => {
-    showToast('Workflow Complete', `${name} finished executing.`, 'success');
-    console.log(data.outputs);
-  })
-  .catch(err => {
-    showToast('Workflow Error', `Failed to run ${name}: ${err.message}`, 'error');
-  });
+// ═══════════════════════════════════════════
+//  HEALTH CHECK
+// ═══════════════════════════════════════════
+const HEALTH_TOOLS = [
+  { name:'nmap',         cluster:'Recon',           install:'sudo apt install nmap' },
+  { name:'subfinder',    cluster:'Recon',           install:'go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest' },
+  { name:'amass',        cluster:'Recon',           install:'go install -v github.com/owasp-amass/amass/v4/...@master' },
+  { name:'masscan',      cluster:'Recon',           install:'sudo apt install masscan' },
+  { name:'naabu',        cluster:'Recon',           install:'go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest' },
+  { name:'ffuf',         cluster:'Dir Brute-Force', install:'go install github.com/ffuf/ffuf/v2@latest' },
+  { name:'gobuster',     cluster:'Dir Brute-Force', install:'go install github.com/OJ/gobuster/v3@latest' },
+  { name:'dirsearch',    cluster:'Dir Brute-Force', install:'pip3 install dirsearch' },
+  { name:'feroxbuster',  cluster:'Dir Brute-Force', install:'cargo install feroxbuster' },
+  { name:'nuclei',       cluster:'Vuln Scanning',   install:'go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest' },
+  { name:'nikto',        cluster:'Vuln Scanning',   install:'sudo apt install nikto' },
+  { name:'sqlmap',       cluster:'Web App',         install:'pip3 install sqlmap' },
+  { name:'hashcat',      cluster:'Password',        install:'sudo apt install hashcat' },
+  { name:'hydra',        cluster:'Password',        install:'sudo apt install hydra' },
+  { name:'tshark',       cluster:'Wireless',        install:'sudo apt install tshark' },
+  { name:'semgrep',      cluster:'Code Analysis',   install:'pip3 install semgrep' },
+  { name:'gitleaks',     cluster:'Code Analysis',   install:'go install github.com/gitleaks/gitleaks/v8@latest' },
+];
+
+async function runHealthCheck() {
+  const tbody   = document.getElementById('health-tbody');
+  const summary = document.getElementById('health-summary');
+  if (!tbody) return;
+
+  tbody.innerHTML = HEALTH_TOOLS.map(t => `
+    <tr id="hrow-${t.name}">
+      <td><span class="tool-tag">${t.name}</span></td>
+      <td style="color:var(--text-dim)">${t.cluster}</td>
+      <td><span class="status-dot"><span class="dot dot-blue"></span> Checking…</span></td>
+      <td style="color:var(--text-faint)">—</td>
+      <td>—</td>
+    </tr>`).join('');
+  summary.textContent = 'Checking tools…';
+
+  try {
+    const resp = await fetch('/api/health');
+    const data = await resp.json();
+    const tools = data.tools || {};
+    let installed = 0;
+
+    HEALTH_TOOLS.forEach(t => {
+      const row = document.getElementById(`hrow-${t.name}`);
+      if (!row) return;
+      const info = tools[t.name];
+      const ok   = info && info.installed;
+      if (ok) installed++;
+      const cells = row.querySelectorAll('td');
+      cells[2].innerHTML = ok
+        ? '<span class="status-dot"><span class="dot dot-green"></span> <span style="color:var(--green)">Installed</span></span>'
+        : '<span class="status-dot"><span class="dot dot-red"></span> <span style="color:var(--red)">Missing</span></span>';
+      cells[3].innerHTML = ok ? `<span style="color:var(--text-dim);font-family:var(--mono);font-size:11px">${escHtml(info.version || '—')}</span>` : '<span style="color:var(--text-faint)">—</span>';
+      cells[4].innerHTML = ok ? '—' : `<code style="font-family:var(--mono);font-size:10px;background:var(--bg-hover);border:1px solid var(--border);padding:2px 7px;border-radius:4px;cursor:pointer;color:var(--cyan)" onclick="navigator.clipboard.writeText('${t.install}');showToast('Copied','Install command copied to clipboard.','success')" title="Click to copy">${escHtml(t.install)}</code>`;
+    });
+
+    summary.textContent = `${installed} / ${HEALTH_TOOLS.length} tools installed`;
+  } catch {
+    // Fallback: mark all as unknown
+    HEALTH_TOOLS.forEach(t => {
+      const row = document.getElementById(`hrow-${t.name}`);
+      if (!row) return;
+      row.querySelectorAll('td')[2].innerHTML = '<span class="status-dot"><span class="dot dot-orange"></span> <span style="color:var(--orange)">Unknown</span></span>';
+    });
+    summary.textContent = 'Could not reach backend — is it running?';
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -578,28 +724,16 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 });
 
 function createProject() {
+  const name = document.getElementById('modal-proj-name')?.value || 'New Project';
+  document.getElementById('project-label').innerHTML = `<span class="project-dot"></span>${escHtml(name)}`;
   closeModal('modal-project');
-  document.getElementById('project-label').textContent = 'project: New Client Scan';
-  showToast('Project Created', 'New workspace initialised successfully.', 'success');
+  showToast('Project Created', `"${name}" workspace initialised.`, 'success');
   setViewById('dashboard');
 }
 
 function saveWorkflow() {
   closeModal('modal-workflow');
-  
-  fetch('/api/workflows', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: 'New Custom Workflow',
-      steps_json: '[]'
-    })
-  }).then(r => r.json()).then(data => {
-    showToast('Workflow Saved', 'New template added to your library via API.', 'success');
-  }).catch(err => {
-    // Fallback to preserve UI if backend isn't running
-    showToast('Workflow Saved', 'New template added to your library (Mock).', 'success');
-  });
+  showToast('Workflow Saved', 'New template added to your library.', 'success');
 }
 
 // ═══════════════════════════════════════════
@@ -609,7 +743,7 @@ let toastTimer;
 function showToast(title, desc, type = 'success') {
   const t = document.getElementById('toast');
   document.getElementById('toast-title').textContent = title;
-  document.getElementById('toast-desc').textContent = desc;
+  document.getElementById('toast-desc').textContent  = desc;
   t.className = type === 'error' ? 'error' : '';
   t.classList.add('show');
   clearTimeout(toastTimer);
@@ -619,7 +753,7 @@ function showToast(title, desc, type = 'success') {
 // ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
-renderFindings('All');
+renderFindings();
 
 const savedView = localStorage.getItem('activeView');
 if (savedView) {

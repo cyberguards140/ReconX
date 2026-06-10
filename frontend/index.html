@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ReconX — Recon Dashboard</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ── TOP NAV ── -->
+<div class="topnav">
+  <div class="topnav-left">
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      ReconX
+    </div>
+    <div class="breadcrumb">
+      <span>Q3</span>
+      <span class="sep">/</span>
+      <span class="current">2625</span>
+    </div>
+  </div>
+  <div class="topnav-center">
+    <button class="tab active" onclick="switchTab(this,'recon')">Recon &amp; Info</button>
+    <button class="tab" onclick="switchTab(this,'vuln')">Vuln Scan</button>
+    <button class="tab" onclick="switchTab(this,'web')">Web Enum</button>
+    <button class="tab" onclick="switchTab(this,'cloud')">Cloud</button>
+  </div>
+  <div class="topnav-right">
+    <button class="btn btn-danger" onclick="openModal('deleteModal')">Delete Project</button>
+    <button class="btn btn-ghost" onclick="openModal('switchModal')">Switch Project</button>
+    <button class="btn btn-primary" onclick="openModal('newModal')">+ New Project</button>
+  </div>
+</div>
+
+<!-- ── STAT BAR ── -->
+<div class="stat-bar">
+  <div class="stat-item">
+    <div class="stat-dot green" id="scanStatusDot"></div>
+    <span class="stat-label">Status</span>
+    <span class="stat-val green" id="scanStatusVal">Idle</span>
+  </div>
+  <div class="stat-bar-sep"></div>
+  <div class="stat-item">
+    <span class="stat-label">Target</span>
+    <span class="stat-val blue" id="statTarget">scanme.nmap.com</span>
+  </div>
+  <div class="stat-bar-sep"></div>
+  <div class="stat-item">
+    <span class="stat-label">Open Ports</span>
+    <span class="stat-val green" id="statPorts">2</span>
+  </div>
+  <div class="stat-bar-sep"></div>
+  <div class="stat-item">
+    <span class="stat-label">Services</span>
+    <span class="stat-val blue" id="statServices">2</span>
+  </div>
+  <div class="stat-bar-sep"></div>
+  <div class="stat-item">
+    <span class="stat-label">Last Scan</span>
+    <span class="stat-val" id="statLastScan">11:54:33</span>
+  </div>
+  <div class="stat-bar-sep"></div>
+  <div class="stat-item">
+    <span class="stat-label">Duration</span>
+    <span class="stat-val amber" id="statDuration">88.9s</span>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="left-panel">
+    <div class="panel-header">
+      <h2>Recon &amp; Info Gathering</h2>
+      <p>Discover live hosts, open ports, subdomains, and exposed services.</p>
+    </div>
+    <div class="left-panel-scroll">
+
+      <div class="section-label">General Options</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Target Scope <span class="req">*</span></label>
+          <input class="inp" id="targetScope" type="text" value="scanme.nmap.com" placeholder="host / CIDR / URL"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Wordlist / Template</label>
+          <select class="inp">
+            <option>SecLists/Discovery/I...</option>
+            <option>SecLists/Discovery/Web</option>
+            <option>Custom Wordlist</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Rate Limit / Threads</label>
+          <input class="inp" type="number" value="50"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">API Key / Auth Token</label>
+          <input class="inp" type="text" placeholder="sk-... or Bearer token"/>
+        </div>
+      </div>
+
+      <button class="run-btn" id="runBtn" onclick="runAllTools()">
+        <span class="spinner"></span>
+        <span class="run-icon">▶</span>
+        <span id="runBtnTxt">Run All Tools</span>
+      </button>
+
+      <div class="divider"></div>
+
+      <!-- NMAP active -->
+      <div class="tool-item active" onclick="toggleExpand()">
+        <div class="tool-row">
+          <div class="tool-name-row">
+            <span class="tool-name">Nmap</span>
+            <span class="badge b-active" id="nmapBadge">active</span>
+          </div>
+          <div class="tool-actions">
+            <button class="icon-btn" title="Run only Nmap" onclick="event.stopPropagation(); runOnlyNmap()" title="Run">▶</button>
+            <button class="icon-btn" onclick="event.stopPropagation(); toggleExpand()">›</button>
+          </div>
+        </div>
+        <div class="tool-desc" id="nmapPreview">nmap -sV -T4 -p 1-1000 scanme.nmap.com</div>
+      </div>
+      <div id="nmapExpand" class="tool-expanded">
+        <div class="sub-row">
+          <div class="form-group">
+            <label class="form-label">Scan Type</label>
+            <select class="inp" id="nmapType" onchange="updatePreview()">
+              <option>-sV - Version Detec...</option>
+              <option>-sS - SYN Scan</option>
+              <option>-sT - TCP Connect</option>
+              <option>-sU - UDP Scan</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Port Range</label>
+            <select class="inp" id="nmapPortsPreset" onchange="handlePortPreset()">
+              <option value="1-1000">Top 1000 (1-1000)</option>
+              <option value="-F">Fast (Top 100)</option>
+              <option value="-p-">All Ports (1-65535)</option>
+              <option value="80,443,8080,8443">Web Ports</option>
+              <option value="custom">Custom...</option>
+            </select>
+            <input class="inp" id="nmapPorts" type="text" value="1-1000" oninput="updatePreview()" style="display:none; margin-top:8px;" placeholder="e.g. 1-1000, 80,443"/>
+          </div>
+        </div>
+        <div class="sub-row">
+          <div class="form-group">
+            <label class="form-label">Timing</label>
+            <select class="inp" id="nmapTiming" onchange="updatePreview()">
+              <option>T4 - Aggressive</option>
+              <option>T1 - Sneaky</option>
+              <option>T2 - Polite</option>
+              <option>T3 - Normal</option>
+              <option>T5 - Insane</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Output</label>
+            <select class="inp">
+              <option>Normal (stdout)</option>
+              <option>XML</option>
+              <option>Grepable</option>
+            </select>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-lbl">Service Version (-sV)</span>
+          <button id="tog_sV" class="toggle on" onclick="this.classList.toggle('on'); updatePreview()"></button>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-lbl">OS Detection (-O)</span>
+          <button id="tog_O" class="toggle" onclick="this.classList.toggle('on'); updatePreview()"></button>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-lbl">Script Scan (-sC)</span>
+          <button id="tog_sC" class="toggle" onclick="this.classList.toggle('on'); updatePreview()"></button>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-lbl">Aggressive Scan (-A)</span>
+          <button id="tog_A" class="toggle" onclick="this.classList.toggle('on'); updatePreview()"></button>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-lbl">Skip Host Discovery (-Pn)</span>
+          <button id="tog_Pn" class="toggle on" onclick="this.classList.toggle('on'); updatePreview()"></button>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-lbl">Verbose (-v)</span>
+          <button id="tog_v" class="toggle" onclick="this.classList.toggle('on'); updatePreview()"></button>
+        </div>
+        <p class="expand-note">These options override general settings for this tool only.</p>
+      </div>
+
+      <!-- other tools -->
+      <div class="tool-item"><div class="tool-row"><div class="tool-name-row"><span class="tool-name">Subfinder</span><span class="badge b-soon">coming soon</span></div><div class="tool-actions"><button class="icon-btn">⚙</button><button class="icon-btn">›</button></div></div><div class="tool-desc">Passive Subdomain Enum</div></div>
+      <div class="tool-item"><div class="tool-row"><div class="tool-name-row"><span class="tool-name">Amass</span><span class="badge b-soon">coming soon</span></div><div class="tool-actions"><button class="icon-btn">⚙</button><button class="icon-btn">›</button></div></div><div class="tool-desc">Active Subdomain Enum</div></div>
+      <div class="tool-item"><div class="tool-row"><div class="tool-name-row"><span class="tool-name">Masscan</span><span class="badge b-soon">coming soon</span></div><div class="tool-actions"><button class="icon-btn">⚙</button><button class="icon-btn">›</button></div></div><div class="tool-desc">High-Speed Port Scan</div></div>
+      <div class="tool-item"><div class="tool-row"><div class="tool-name-row"><span class="tool-name">Naabu</span><span class="badge b-soon">coming soon</span></div><div class="tool-actions"><button class="icon-btn">⚙</button><button class="icon-btn">›</button></div></div><div class="tool-desc">Port Discovery</div></div>
+      <div class="tool-item"><div class="tool-row"><div class="tool-name-row"><span class="tool-name">theHarvester</span><span class="badge b-soon">coming soon</span></div><div class="tool-actions"><button class="icon-btn">⚙</button><button class="icon-btn">›</button></div></div><div class="tool-desc">OSINT Gathering</div></div>
+      <div class="tool-item"><div class="tool-row"><div class="tool-name-row"><span class="tool-name">Shodan CLI</span><span class="badge b-soon">coming soon</span></div><div class="tool-actions"><button class="icon-btn">⚙</button><button class="icon-btn">›</button></div></div><div class="tool-desc">Host Lookup via Shodan</div></div>
+
+    </div><!-- /scroll -->
+  </div><!-- /left-panel -->
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="right-panel">
+
+    <div class="right-tabs">
+      <button class="rtab active" id="tab-terminal" onclick="switchRTab('terminal', this)">Terminal</button>
+      <button class="rtab" id="tab-findings" onclick="switchRTab('findings', this)">
+        Findings <span class="rtab-count" id="findingsCount">4</span>
+      </button>
+      <button class="rtab" id="tab-history" onclick="switchRTab('history', this)">History</button>
+    </div>
+
+    <div class="right-header">
+      <div class="exec-info">
+        <div class="exec-title">Execution Log</div>
+        <div class="exec-time" id="execTime">Completed at 11:54:33</div>
+      </div>
+      <div class="live-pill idle" id="livePill">
+        <div class="live-dot"></div>
+        LIVE
+      </div>
+    </div>
+
+    <!-- TERMINAL TAB -->
+    <div id="view-terminal" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="terminal-wrap">
+        <div class="terminal-window">
+          <div class="terminal-bar">
+            <div class="tdot tdot-r"></div>
+            <div class="tdot tdot-y"></div>
+            <div class="tdot tdot-g"></div>
+            <span class="t-title" id="termTitle">pentdash — recon</span>
+            <button class="t-copy-btn" onclick="copyLog()">Copy Log</button>
+          </div>
+          <div class="terminal-body" id="termBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINDINGS TAB -->
+    <div id="view-findings" class="findings-panel">
+      <div class="finding-card open-port">
+        <div class="finding-header">
+          <div>
+            <div class="finding-title">22/tcp — SSH Open</div>
+            <div class="finding-meta">OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.13 · 45.33.32.156</div>
+          </div>
+          <span class="finding-badge fb-open">Open Port</span>
+        </div>
+      </div>
+      <div class="finding-card open-port">
+        <div class="finding-header">
+          <div>
+            <div class="finding-title">80/tcp — HTTP Open</div>
+            <div class="finding-meta">Apache httpd 2.4.7 · 45.33.32.156</div>
+          </div>
+          <span class="finding-badge fb-open">Open Port</span>
+        </div>
+      </div>
+      <div class="finding-card info-host">
+        <div class="finding-header">
+          <div>
+            <div class="finding-title">Host Identified</div>
+            <div class="finding-meta">scanme.nmap.com → 45.33.32.156 · rDNS: scanme.nmap.org</div>
+          </div>
+          <span class="finding-badge fb-info">Host Info</span>
+        </div>
+      </div>
+      <div class="finding-card warn-port">
+        <div class="finding-header">
+          <div>
+            <div class="finding-title">OS Fingerprint</div>
+            <div class="finding-meta">Linux · CPE: cpe:/o:linux:linux_kernel</div>
+          </div>
+          <span class="finding-badge fb-warn">OS Info</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="view-history" class="history-panel">
+      <div class="h-row">
+        <div class="h-icon s">✓</div>
+        <div>
+          <div class="h-target">scanme.nmap.com</div>
+          <div class="h-detail">Nmap · 2 open ports · 88.9s</div>
+        </div>
+        <div class="h-time">Today 11:54</div>
+      </div>
+      <div class="h-row">
+        <div class="h-icon s">✓</div>
+        <div>
+          <div class="h-target">192.168.1.0/24</div>
+          <div class="h-detail">Nmap · 12 open ports · 142s</div>
+        </div>
+        <div class="h-time">Yesterday 09:22</div>
+      </div>
+      <div class="h-row">
+        <div class="h-icon e">✗</div>
+        <div>
+          <div class="h-target">testphp.vulnweb.com</div>
+          <div class="h-detail">Nmap · Timeout after 60s</div>
+        </div>
+        <div class="h-time">Jun 8 · 14:07</div>
+      </div>
+      <div class="h-row">
+        <div class="h-icon s">✓</div>
+        <div>
+          <div class="h-target">demo.ine.com</div>
+          <div class="h-detail">Nmap · 5 open ports · 37.2s</div>
+        </div>
+        <div class="h-time">Jun 7 · 18:45</div>
+      </div>
+    </div>
+
+  </div><!-- /right-panel -->
+</div><!-- /main -->
+
+<!-- ── DELETE MODAL ── -->
+<div class="overlay" id="deleteModal">
+  <div class="modal">
+    <h3>Delete Project</h3>
+    <div class="modal-warn">⚠ This action is permanent and cannot be undone.</div>
+    <p>All scan data, findings, and history for <strong style="color:var(--text)">Q3 / 2625</strong> will be permanently removed.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SWITCH MODAL ── -->
+<div class="overlay" id="switchModal">
+  <div class="modal">
+    <h3>Switch Project</h3>
+    <p>Select a project to switch to, or create a new one.</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+      <div style="background:var(--bg4);border:1px solid var(--blue-d);border-radius:6px;padding:9px 12px;font-size:12px;color:var(--blue);cursor:pointer;">Q3 / 2625 <span style="font-size:10px;color:var(--muted);margin-left:6px;">(current)</span></div>
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-size:12px;color:var(--text);cursor:pointer;" onclick="toast('Switched to Q2/1841','blue')">Q2 / 1841</div>
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-size:12px;color:var(--text);cursor:pointer;" onclick="toast('Switched to Labs/Dev','blue')">Labs / Dev</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('switchModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── NEW PROJECT MODAL ── -->
+<div class="overlay" id="newModal">
+  <div class="modal">
+    <h3>New Project</h3>
+    <p>Create a new reconnaissance project to organize your targets and scans.</p>
+    <div class="form-group" style="padding:0;margin-bottom:8px;">
+      <label class="form-label">Project Name</label>
+      <input class="inp" type="text" placeholder="e.g. Bug Bounty · H1" id="newProjectName"/>
+    </div>
+    <div class="form-group" style="padding:0;margin-bottom:16px;">
+      <label class="form-label">Initial Target</label>
+      <input class="inp" type="text" placeholder="domain.com or 10.0.0.0/24" id="newProjectTarget"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('newModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmNew()">Create Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-dot" id="toastDot"></div>
+  <span id="toastMsg"></span>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from .executor import execute_cluster_tools
+from .summarizer import generate_ai_summary
 from . import schemas
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,6 @@ async def run_workflow_sequence(req: schemas.WorkflowRunRequest, db=None):
         if commands:
             step_outputs = await execute_cluster_tools(commands)
             
-            from .summarizer import generate_ai_summary
             summary_data = await generate_ai_summary(cluster_name, step_outputs)
             
             # Embed AI summary as a special 'tool' output so it gets logged in the UI seamlessly

@@ -13,15 +13,15 @@ async def run_command_async(command: str):
     )
     
     try:
-        # 60 second timeout for testing so the UI doesn't spin forever
-        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60.0)
+        # 600 second (10 min) timeout for real pentesting
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=600.0)
         code = process.returncode
     except asyncio.TimeoutError:
         # Kill process if it takes too long
         process.kill()
         stdout, stderr = await process.communicate()
         code = -1
-        stderr += b"\n[!] Process killed after 60s timeout."
+        stderr += b"\n[!] Process killed after 10m timeout."
         
     return stdout.decode(errors='replace'), stderr.decode(errors='replace'), code
 

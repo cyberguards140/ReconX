@@ -1,6 +1,7 @@
 /* ═══════════ STATE ═══════════ */
 let isRunning = false;
 let expandedNmap = true;
+const $ = id => document.getElementById(id);
 
 /* ═══════════ INITIAL LOG ═══════════ */
 const initLog = [
@@ -63,13 +64,11 @@ function buildRunLines(target) {
 
 function runAllTools() {
   if (isRunning) return;
-  const target = document.getElementById('targetScope').value.trim() || 'scanme.nmap.com';
-  startRun(target);
+  startRun($('targetScope').value.trim() || 'scanme.nmap.com');
 }
 function runOnlyNmap() {
   if (isRunning) return;
-  const target = document.getElementById('targetScope').value.trim() || 'scanme.nmap.com';
-  startRun(target);
+  startRun($('targetScope').value.trim() || 'scanme.nmap.com');
 }
 
 
@@ -78,47 +77,36 @@ function runOnlyNmap() {
 function getBuiltCommand(target) {
   let cmd = "nmap";
   
-  // Scan Type
-  const typeEl = document.getElementById('nmapType');
+  const typeEl = $('nmapType');
   if (typeEl) {
     const sType = typeEl.value.split(' ')[0];
     if (sType && sType !== '-sV') cmd += " " + sType; 
   }
 
-  // Toggles
-  if (document.getElementById('tog_sV') && document.getElementById('tog_sV').classList.contains('on')) cmd += " -sV";
-  if (document.getElementById('tog_O') && document.getElementById('tog_O').classList.contains('on')) cmd += " -O";
-  if (document.getElementById('tog_sC') && document.getElementById('tog_sC').classList.contains('on')) cmd += " -sC";
-  if (document.getElementById('tog_A') && document.getElementById('tog_A').classList.contains('on')) cmd += " -A";
-  if (document.getElementById('tog_Pn') && document.getElementById('tog_Pn').classList.contains('on')) cmd += " -Pn";
-  if (document.getElementById('tog_v') && document.getElementById('tog_v').classList.contains('on')) cmd += " -v";
+  const toggles = ['tog_sV', 'tog_O', 'tog_sC', 'tog_A', 'tog_Pn', 'tog_v'];
+  toggles.forEach(t => {
+    if ($(t) && $(t).classList.contains('on')) cmd += ` -${t.split('_')[1]}`;
+  });
 
-  // Timing
-  const timingEl = document.getElementById('nmapTiming');
+  const timingEl = $('nmapTiming');
   if (timingEl) {
-    const timing = timingEl.value.split(' ')[0]; // e.g. T4
+    const timing = timingEl.value.split(' ')[0];
     if (timing && timing.startsWith('T')) cmd += " -" + timing;
   }
 
-  // Ports
-  const portsEl = document.getElementById('nmapPorts');
+  const portsEl = $('nmapPorts');
   if (portsEl && portsEl.value) {
-    if (portsEl.value === '-F') {
-      cmd += " -F";
-    } else if (portsEl.value === '-p-') {
-      cmd += " -p-";
-    } else {
-      cmd += " -p " + portsEl.value;
-    }
+    if (portsEl.value === '-F') cmd += " -F";
+    else if (portsEl.value === '-p-') cmd += " -p-";
+    else cmd += " -p " + portsEl.value;
   }
   
-  cmd += " " + target;
-  return cmd.replace(/\s+/g, ' ');
+  return (cmd + " " + target).replace(/\s+/g, ' ');
 }
 
 function handlePortPreset() {
-  const preset = document.getElementById('nmapPortsPreset').value;
-  const customInput = document.getElementById('nmapPorts');
+  const preset = $('nmapPortsPreset').value;
+  const customInput = $('nmapPorts');
   if (preset === 'custom') {
     customInput.style.display = 'block';
   } else {
@@ -129,11 +117,8 @@ function handlePortPreset() {
 }
 
 function updatePreview() {
-  const t = document.getElementById('targetScope').value || 'scanme.nmap.com';
-  const preview = document.getElementById('nmapPreview');
-  if (preview) {
-    preview.textContent = getBuiltCommand(t);
-  }
+  const t = $('targetScope').value || 'scanme.nmap.com';
+  if ($('nmapPreview')) $('nmapPreview').textContent = getBuiltCommand(t);
 }
 
 function formatToolOutput(text, toolName) {
@@ -153,87 +138,76 @@ function formatToolOutput(text, toolName) {
   return out.replace(/\r?\n/g, '<br>');
 }
 
-function startRun(target) {
+async function startRun(target) {
   isRunning = true;
-  switchRTab('terminal', document.getElementById('tab-terminal'));
+  switchRTab('terminal', $('tab-terminal'));
 
-  const btn = document.getElementById('runBtn');
+  const btn = $('runBtn');
   btn.classList.add('running');
-  document.getElementById('runBtnTxt').textContent = 'Running...';
+  $('runBtnTxt').textContent = 'Running...';
 
-  document.getElementById('nmapBadge').textContent = 'running';
-  document.getElementById('nmapBadge').className = 'badge b-run';
-  document.getElementById('livePill').classList.remove('idle');
-  document.getElementById('scanStatusDot').classList.remove('green');
-  document.getElementById('scanStatusDot').style.background = 'var(--amber)';
-  document.getElementById('scanStatusDot').style.animation = 'pulse 1s ease infinite';
-  document.getElementById('scanStatusVal').textContent = 'Running';
-  document.getElementById('scanStatusVal').style.color = 'var(--amber)';
-  document.getElementById('statTarget').textContent = target;
-  document.getElementById('execTime').textContent = `Started at ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
-  document.getElementById('termTitle').textContent = `pentdash — recon · ${target}`;
+  $('nmapBadge').textContent = 'running';
+  $('nmapBadge').className = 'badge b-run';
+  $('livePill').classList.remove('idle');
+  $('scanStatusDot').classList.remove('green');
+  $('scanStatusDot').style.background = 'var(--amber)';
+  $('scanStatusDot').style.animation = 'pulse 1s ease infinite';
+  $('scanStatusVal').textContent = 'Running';
+  $('scanStatusVal').style.color = 'var(--amber)';
+  $('statTarget').textContent = target;
+  $('execTime').textContent = `Started at ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+  $('termTitle').textContent = `pentdash — recon · ${target}`;
 
-  const body = document.getElementById('termBody');
-  body.innerHTML = ''; body.insertAdjacentHTML('beforeend', '<span class="tline tc"># Executing 1 tool(s) against ' + target + '</span>\n');
-  
+  const body = $('termBody');
   const cmd = getBuiltCommand(target);
-  body.insertAdjacentHTML('beforeend', '<span class="tline thead">— Nmap —</span>\n');
-  body.insertAdjacentHTML('beforeend', '<span class="tline"><span class="tp">pentdash@kali</span><span class="tlbl">:~$</span> <span class="tcmd">' + cmd + '</span></span>\n\n');
   
-  fetch('/api/run/cluster', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      cluster_name: 'recon',
-      target: target,
-      project_id: 1,
-      tools: [{name: 'nmap', cmd: cmd}]
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
+  body.innerHTML = ''; 
+  body.insertAdjacentHTML('beforeend', `<span class="tline tc"># Executing 1 tool(s) against ${target}</span>\n`);
+  body.insertAdjacentHTML('beforeend', '<span class="tline thead">— Nmap —</span>\n');
+  body.insertAdjacentHTML('beforeend', `<span class="tline"><span class="tp">pentdash@kali</span><span class="tlbl">:~$</span> <span class="tcmd">${cmd}</span></span>\n\n`);
+  
+  try {
+    const res = await fetch('/api/run/cluster', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cluster_name: 'recon', target: target, project_id: 1, tools: [{name: 'nmap', cmd: cmd}] })
+    });
+    
+    const data = await res.json();
     isRunning = false;
     btn.classList.remove('running');
-    document.getElementById('runBtnTxt').textContent = 'Run All Tools';
+    $('runBtnTxt').textContent = 'Run All Tools';
 
-    document.getElementById('nmapBadge').textContent = 'done';
-    document.getElementById('nmapBadge').className = 'badge b-done';
-    document.getElementById('livePill').classList.add('idle');
-    document.getElementById('scanStatusDot').style.background = 'var(--green)';
-    document.getElementById('scanStatusDot').style.animation = 'none';
-    document.getElementById('scanStatusVal').textContent = 'Complete';
-    document.getElementById('scanStatusVal').style.color = 'var(--green)';
+    $('nmapBadge').textContent = 'done';
+    $('nmapBadge').className = 'badge b-done';
+    $('livePill').classList.add('idle');
+    $('scanStatusDot').style.background = 'var(--green)';
+    $('scanStatusDot').style.animation = 'none';
+    $('scanStatusVal').textContent = 'Complete';
+    $('scanStatusVal').style.color = 'var(--green)';
+    
     const now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    document.getElementById('execTime').textContent = `Completed at ${now}`;
-    document.getElementById('statLastScan').textContent = now;
+    $('execTime').textContent = `Completed at ${now}`;
+    $('statLastScan').textContent = now;
 
     if (data.outputs && data.outputs.length > 0) {
       const out = data.outputs[0];
       let linesToPrint = [];
       
-      if (out.stdout) {
-        out.stdout.split('\n').forEach(l => { if (l.trim()) linesToPrint.push({text: l, type: 'stdout'}); });
-      }
-      if (out.stderr) {
-        out.stderr.split('\n').forEach(l => { if (l.trim()) linesToPrint.push({text: l, type: 'stderr'}); });
-      }
-      if (out.error) {
-        linesToPrint.push({text: 'Error: ' + out.error, type: 'error'});
-      }
+      if (out.stdout) out.stdout.split('\n').forEach(l => { if (l.trim()) linesToPrint.push({text: l, type: 'stdout'}); });
+      if (out.stderr) out.stderr.split('\n').forEach(l => { if (l.trim()) linesToPrint.push({text: l, type: 'stderr'}); });
+      if (out.error) linesToPrint.push({text: 'Error: ' + out.error, type: 'error'});
       
       let delay = 0;
       linesToPrint.forEach((lineObj, idx) => {
-        delay += 60; // 60ms delay per line for typing effect
+        delay += 60; 
         setTimeout(() => {
-          let formatted = formatToolOutput(lineObj.text, 'nmap');
           let span = '';
-          if (lineObj.type === 'stdout') {
-            span = `<span class="tline">${formatted}</span>\n`;
-          } else if (lineObj.type === 'stderr') {
-            span = `<span class="tline" style="color:var(--amber)">${formatted}</span>\n`;
-          } else {
-            span = `<span class="tline te">${formatted}</span>\n`;
-          }
+          const formatted = formatToolOutput(lineObj.text, 'nmap');
+          if (lineObj.type === 'stdout') span = `<span class="tline">${formatted}</span>\n`;
+          else if (lineObj.type === 'stderr') span = `<span class="tline" style="color:var(--amber)">${formatted}</span>\n`;
+          else span = `<span class="tline te">${formatted}</span>\n`;
+          
           body.insertAdjacentHTML('beforeend', span);
           body.scrollTop = body.scrollHeight;
           
@@ -245,44 +219,39 @@ function startRun(target) {
       });
       
       if (linesToPrint.length === 0) {
-        body.innerHTML += `<span class="tline ts">✓ Tool exited with code ${out.code} at ${now} (No output)</span>\n`;
+        body.insertAdjacentHTML('beforeend', `<span class="tline ts">✓ Tool exited with code ${out.code} at ${now} (No output)</span>\n`);
         body.scrollTop = body.scrollHeight;
       }
-    }
-    
-    // Parse stats
-    if (data.outputs && data.outputs[0].stdout) {
-      const openPorts = (data.outputs[0].stdout.match(/open/g) || []).length;
-      document.getElementById('statOpenPorts').textContent = openPorts;
-      document.getElementById('statServices').textContent = openPorts;
+      
+      const openPorts = out.stdout ? (out.stdout.match(/open/g) || []).length : 0;
+      $('statOpenPorts').textContent = openPorts;
+      $('statServices').textContent = openPorts;
       toast(`Scan complete — ${openPorts} open ports found`, 'green');
     } else {
       toast('Scan complete', 'green');
     }
-  })
-  .catch(err => {
+  } catch (err) {
     isRunning = false;
     btn.classList.remove('running');
-    document.getElementById('runBtnTxt').textContent = 'Error';
-    body.innerHTML += `<span class="tline te">✗ API Connection Error: ${err.message}</span>\n`;
-    document.getElementById('livePill').classList.add('idle');
-    document.getElementById('scanStatusDot').style.background = 'var(--red)';
-    document.getElementById('scanStatusDot').style.animation = 'none';
-    document.getElementById('scanStatusVal').textContent = 'Error';
-    document.getElementById('scanStatusVal').style.color = 'var(--red)';
+    $('runBtnTxt').textContent = 'Error';
+    body.insertAdjacentHTML('beforeend', `<span class="tline te">✗ API Connection Error: ${err.message}</span>\n`);
+    $('livePill').classList.add('idle');
+    $('scanStatusDot').style.background = 'var(--red)';
+    $('scanStatusDot').style.animation = 'none';
+    $('scanStatusVal').textContent = 'Error';
+    $('scanStatusVal').style.color = 'var(--red)';
     toast('API Error', 'red');
-  });
+  }
 }
 
 /* ═══════════ TOGGLES ═══════════ */
 function toggleExpand() {
-  const el = document.getElementById('nmapExpand');
   expandedNmap = !expandedNmap;
-  el.style.display = expandedNmap ? 'block' : 'none';
+  $('nmapExpand').style.display = expandedNmap ? 'block' : 'none';
 }
 
-document.getElementById('targetScope').addEventListener('input', updatePreview);
-document.getElementById('nmapPorts').addEventListener('input', updatePreview);
+$('targetScope').addEventListener('input', updatePreview);
+$('nmapPorts').addEventListener('input', updatePreview);
 
 /* ═══════════ TAB SWITCHING ═══════════ */
 function switchTab(el, id) {
@@ -291,61 +260,62 @@ function switchTab(el, id) {
 }
 function switchRTab(name, el) {
   ['terminal','findings','history'].forEach(v => {
-    const view = document.getElementById('view-'+v);
-    if(view) view.style.display = 'none';
-    if(view) view.classList.remove('visible');
+    const view = $('view-'+v);
+    if(view) {
+      view.style.display = 'none';
+      view.classList.remove('visible');
+    }
   });
   document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
-  const view = document.getElementById('view-'+name);
-  if (view) { view.style.display = 'flex'; if(view.classList.contains('findings-panel')||view.classList.contains('history-panel')) { view.style.display='block'; view.classList.add('visible'); } }
+  const view = $('view-'+name);
+  if (view) { 
+    view.style.display = 'flex'; 
+    if(view.classList.contains('findings-panel')||view.classList.contains('history-panel')) { 
+      view.style.display='block'; 
+      view.classList.add('visible'); 
+    } 
+  }
   if (el) el.classList.add('active');
 }
 
 /* ═══════════ MODALS ═══════════ */
-function openModal(id) {
-  document.getElementById(id).classList.add('open');
-}
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
+function openModal(id) { $(id).classList.add('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
 document.querySelectorAll('.overlay').forEach(o => {
   o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); });
 });
 function confirmDelete() {
   closeModal('deleteModal');
-  const b = document.getElementById('termBody');
-  b.innerHTML = '<span class="tline te">✗  Project Q3/2625 deleted. All data removed.</span>';
-  document.getElementById('execTime').textContent = 'Project deleted.';
-  document.getElementById('livePill').classList.add('idle');
-  document.getElementById('scanStatusVal').textContent = 'Idle';
+  $('termBody').insertAdjacentHTML('beforeend', '<span class="tline te">✗  Project Q3/2625 deleted. All data removed.</span>');
+  $('execTime').textContent = 'Project deleted.';
+  $('livePill').classList.add('idle');
+  $('scanStatusVal').textContent = 'Idle';
   toast('Project deleted', 'red');
 }
 function confirmNew() {
-  const name = document.getElementById('newProjectName').value || 'New Project';
+  const name = $('newProjectName').value || 'New Project';
   closeModal('newModal');
   toast(`Project "${name}" created`, 'green');
 }
 
 /* ═══════════ COPY LOG ═══════════ */
 function copyLog() {
-  const text = document.getElementById('termBody').innerText;
-  navigator.clipboard.writeText(text).then(()=>toast('Log copied to clipboard','blue')).catch(()=>{});
+  navigator.clipboard.writeText($('termBody').innerText)
+    .then(()=>toast('Log copied to clipboard','blue'))
+    .catch(()=>{});
 }
 
 /* ═══════════ TOAST ═══════════ */
 function toast(msg, color='green') {
-  const t = document.getElementById('toast');
-  const d = document.getElementById('toastDot');
-  const m = document.getElementById('toastMsg');
+  const t = $('toast');
   const colors = {green:'var(--green)', blue:'var(--blue)', red:'var(--red)', amber:'var(--amber)'};
-  d.style.background = colors[color]||'var(--green)';
-  m.textContent = msg;
+  $('toastDot').style.background = colors[color]||'var(--green)';
+  $('toastMsg').textContent = msg;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
 /* ═══════════ INIT ═══════════ */
 renderLog(initLog);
-// set initial tab correctly
-document.getElementById('view-findings').style.display = 'none';
-document.getElementById('view-history').style.display = 'none';
+$('view-findings').style.display = 'none';
+$('view-history').style.display = 'none';

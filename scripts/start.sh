@@ -4,7 +4,7 @@ GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-cd ..
+cd "$(dirname "$0")/.."
 
 if [ ! -d ".venv" ]; then
     echo -e "${CYAN}Creating virtual environment...${NC}"

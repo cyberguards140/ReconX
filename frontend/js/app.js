@@ -191,42 +191,66 @@ async function startRun(target) {
     $('statLastScan').textContent = now;
 
     if (data.outputs && data.outputs.length > 0) {
-      const out = data.outputs[0];
       let linesToPrint = [];
+      let totalOpenPorts = 0;
       
-      if (out.stdout) out.stdout.split('\n').forEach(l => { if (l.trim()) linesToPrint.push({text: l, type: 'stdout'}); });
-      if (out.stderr) out.stderr.split('\n').forEach(l => { if (l.trim()) linesToPrint.push({text: l, type: 'stderr'}); });
-      if (out.error) linesToPrint.push({text: 'Error: ' + out.error, type: 'error'});
+      data.outputs.forEach((out, toolIdx) => {
+        if (out.tool === "Gemini AI Summarizer") return;
+        
+        if (toolIdx > 0) {
+          linesToPrint.push({text: `\n— ${out.tool} —`, type: 'header'});
+        }
+        
+        if (out.stdout) {
+          out.stdout.split('\n').forEach(l => {
+            if (l.trim()) linesToPrint.push({text: l, type: 'stdout', tool: out.tool});
+          });
+        }
+        if (out.stderr) {
+          out.stderr.split('\n').forEach(l => {
+            if (l.trim()) linesToPrint.push({text: l, type: 'stderr', tool: out.tool});
+          });
+        }
+        if (out.error) {
+          linesToPrint.push({text: 'Error: ' + out.error, type: 'error', tool: out.tool});
+        }
+        
+        linesToPrint.push({text: `✓ ${out.tool} exited with code ${out.code !== undefined ? out.code : 0}`, type: 'status'});
+        
+        if (out.tool.toLowerCase().includes('nmap') && out.stdout) {
+          totalOpenPorts += (out.stdout.match(/open/g) || []).length;
+        }
+      });
       
       let delay = 0;
       linesToPrint.forEach((lineObj, idx) => {
         delay += 60; 
         setTimeout(() => {
           let span = '';
-          const formatted = formatToolOutput(lineObj.text, 'nmap');
-          if (lineObj.type === 'stdout') span = `<span class="tline">${formatted}</span>\n`;
-          else if (lineObj.type === 'stderr') span = `<span class="tline" style="color:var(--amber)">${formatted}</span>\n`;
-          else span = `<span class="tline te">${formatted}</span>\n`;
+          if (lineObj.type === 'header') {
+            span = `<span class="tline thead">${lineObj.text}</span>\n`;
+          } else if (lineObj.type === 'status') {
+            span = `<span class="tline ts">${lineObj.text} at ${now}</span>\n`;
+          } else {
+            const formatted = formatToolOutput(lineObj.text, lineObj.tool || '');
+            if (lineObj.type === 'stdout') span = `<span class="tline">${formatted}</span>\n`;
+            else if (lineObj.type === 'stderr') span = `<span class="tline" style="color:var(--amber)">${formatted}</span>\n`;
+            else span = `<span class="tline te">${formatted}</span>\n`;
+          }
           
           body.insertAdjacentHTML('beforeend', span);
           body.scrollTop = body.scrollHeight;
-          
-          if (idx === linesToPrint.length - 1) {
-            body.insertAdjacentHTML('beforeend', `<span class="tline ts">✓ Tool exited with code ${out.code} at ${now}</span>\n`);
-            body.scrollTop = body.scrollHeight;
-          }
         }, delay);
       });
       
       if (linesToPrint.length === 0) {
-        body.insertAdjacentHTML('beforeend', `<span class="tline ts">✓ Tool exited with code ${out.code} at ${now} (No output)</span>\n`);
+        body.insertAdjacentHTML('beforeend', `<span class="tline ts">✓ Scan finished at ${now} (No output)</span>\n`);
         body.scrollTop = body.scrollHeight;
       }
       
-      const openPorts = out.stdout ? (out.stdout.match(/open/g) || []).length : 0;
-      $('statOpenPorts').textContent = openPorts;
-      $('statServices').textContent = openPorts;
-      toast(`Scan complete — ${openPorts} open ports found`, 'green');
+      $('statPorts').textContent = totalOpenPorts;
+      $('statServices').textContent = totalOpenPorts;
+      toast(`Scan complete — ${totalOpenPorts} open ports found`, 'green');
     } else {
       toast('Scan complete', 'green');
     }

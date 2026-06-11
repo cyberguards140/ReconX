@@ -1,46 +1,118 @@
 # PentDash
 
-PentDash is a modern, responsive, API-driven Penetration Testing Dashboard. It provides a sleek UI to run automated pentesting tools (like Nmap, Subfinder, Amass, ffuf) via a local backend and streams the raw execution logs to a beautifully colorized web interface. It also includes an AI summarization engine powered by Gemini.
+PentDash is a modern, responsive, API-driven Penetration Testing Dashboard. It provides a sleek, premium web UI to run automated pentesting tools (such as Nmap) via a FastAPI backend, streams the raw execution logs to a beautifully colorized terminal interface in real-time, and generates automated scan summaries using Google's Gemini AI.
 
-## Architecture
-- **Frontend**: Vanilla HTML/JS/CSS with no heavy frontend framework dependencies.
-- **Backend**: FastAPI (Python) running asynchronous subprocess execution for CLI pentesting tools.
-- **AI Summary**: Uses the Google Gemini API to analyze raw tool output and extract critical vulnerabilities and open ports automatically.
+---
+
+## Key Features
+
+- **Stateless & State-backed Modes**: Launch parallel scans and stream results in real-time. Execution details, findings (like open ports), and raw scan logs are persisted locally in SQLite.
+- **Gemini AI Summarizer**: Automated vulnerability, service, and open port analysis powered by the Gemini 1.5 Flash API.
+- **Terminal Style Output**: Rich terminal theme log streaming with dynamic colorization and auto-scroll.
+- **Cross-Platform Compatibility**: Fully compatible with Linux and Windows (using Windows Subsystem for Linux - WSL).
+- **Network-wide Access**: The web server binds to `0.0.0.0:8000`, allowing anyone on your local network to access the dashboard.
+- **Desktop First**: Tailored and optimized specifically for desktop monitors for the ultimate SOC/command center experience.
+
+---
+
+## Directory Structure
+
+```text
+ReconX/
+├── .env.example              # Example Gemini API configuration
+├── .gitignore                # Git ignore rules for virtual environments & database
+├── README.md                 # Project documentation
+├── backend/                  # FastAPI Application Core
+│   ├── core/                 # Core utilities (database config)
+│   │   └── database.py
+│   ├── routers/              # API Route Handlers
+│   │   ├── projects.py       # Project management
+│   │   ├── scans.py          # Scan execution & database logging
+│   │   ├── findings.py       # Vulnerability & port findings
+│   │   └── workflows.py      # Workflow definitions
+│   ├── services/             # Application Services (business logic)
+│   │   ├── executor.py       # Asynchronous process execution
+│   │   ├── summarizer.py     # Gemini AI interface
+│   │   └── workflow_runner.py# Multi-stage scan runner
+│   ├── tools/                # Pentest tool builder modules
+│   │   └── recon.py
+│   ├── main.py               # Main entry point (FastAPI server mount)
+│   ├── models.py             # SQLAlchemy schemas
+│   ├── schemas.py            # Pydantic validation schemas
+│   └── requirements.txt      # Python dependencies
+├── data/                     # Local SQLite database directory
+│   └── pentdash.db
+├── frontend/                 # Web Dashboard Frontend
+│   ├── css/
+│   │   └── style.css         # Custom styling
+│   ├── js/
+│   │   └── app.js            # Frontend logic & log renderer
+│   └── index.html            # Dashboard markup
+└── scripts/                  # Setup & Control Scripts
+    ├── install_tools.sh      # Essential CLI security tool installer
+    ├── start.sh              # Unix/WSL entry script (venv creation + server launch)
+    └── start.bat             # Windows WSL wrapper batch file
+```
+
+---
 
 ## Prerequisites
-- Windows Subsystem for Linux (WSL) or native Linux
-- Python 3.10+
-- The CLI pentesting tools installed in your system `PATH` (e.g. `nmap`, `subfinder`, `amass`)
 
-## Setup Instructions
+- **Python 3.10+**
+- **WSL (Windows Subsystem for Linux)** if you are running on Windows.
+- Standard security tools installed in your system PATH (e.g. `nmap`).
 
-1. **Install Base Tools**
-   Run the included installation script to set up the necessary tools on your Linux/WSL environment:
-   ```bash
-   chmod +x install_tools.sh
-   ./install_tools.sh
-   ```
+---
 
-2. **Configure API Key (Optional but Recommended)**
-   To enable AI Summarization of your scans, copy the example `.env` file and add your Gemini API key:
-   ```bash
-   cp backend/.env.example backend/.env
-   # Edit backend/.env and add your GEMINI_API_KEY
-   ```
+## Getting Started
 
-3. **Start the Dashboard**
-   Launch the FastAPI backend and serve the frontend:
-   ```bash
-   chmod +x start.sh
-   ./start.sh
-   ```
-   *If you are running natively on Windows PowerShell, you can use `./start.ps1` instead.*
+### 1. Install Pentesting Tools
+Run the lean tools installer to prepare your Linux/WSL environment:
+```bash
+# Set executable permission if required
+chmod +x scripts/install_tools.sh
 
-4. **Access the Application**
-   Open your browser and navigate to:
-   [http://localhost:5000](http://localhost:5000)
+# Execute tool installer
+./scripts/install_tools.sh
+```
 
-## Features
-- **Stateless Execution**: PentDash acts as a proxy, natively running your tools and streaming the output back to the UI in real-time.
-- **Syntax Highlighting**: Custom regex formatters detect ports, IPs, and statuses (open/closed) in the Execution Log and automatically apply syntax highlighting.
-- **Workflow Sequences**: Chain multiple tools together into a seamless workflow (e.g., Recon -> Dir Brute-force -> Vuln Scan).
+### 2. Configure Gemini API Key (Optional)
+To enable AI summarization of your scans, copy the example `.env` file to the root directory and add your API key:
+```bash
+cp .env.example .env
+# Edit the .env file and set GEMINI_API_KEY="your_api_key"
+```
+
+### 3. Launch the Server
+Start the dashboard server using the wrapper script from anywhere in your workspace:
+
+#### On Linux / WSL:
+```bash
+# Set executable permission if required
+chmod +x scripts/start.sh
+
+# Run start script
+./scripts/start.sh
+```
+
+#### On Windows Command Prompt / PowerShell:
+Double-click `scripts/start.bat` or run:
+```cmd
+.\scripts\start.bat
+```
+*(This batch file automatically invokes WSL to boot the backend environment).*
+
+---
+
+## Accessing the Dashboard
+
+Once started, the server is accessible at:
+- Local machine: [http://localhost:8000](http://localhost:8000)
+- Network devices: `http://<your-machine-ip>:8000`
+
+---
+
+## Development Notes
+
+- **Aesthetics & Styling**: Built using pure vanilla CSS and HTML. No heavy frontend libraries or TailwindCSS dependency.
+- **Port Binding**: Binds to `0.0.0.0` by default. Do not expose this port to public networks directly.

@@ -1,11 +1,25 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from .core.database import engine, Base
+from .core.database import engine, Base, SessionLocal
 from .routers import projects, scans, findings, workflows
+from . import models
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Ensure default project exists for database foreign keys
+db = SessionLocal()
+try:
+    default_proj = db.query(models.Project).filter(models.Project.id == 1).first()
+    if not default_proj:
+        new_proj = models.Project(id=1, name="Default Project", client="Internal Client", target_scope="*")
+        db.add(new_proj)
+        db.commit()
+except Exception as e:
+    db.rollback()
+finally:
+    db.close()
 
 app = FastAPI(title="PentDash API")
 

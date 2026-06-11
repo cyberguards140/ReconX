@@ -5,7 +5,7 @@ echo "Updating system..."
 sudo apt update
 
 echo "Installing base utilities and Python/Go..."
-sudo apt install -y python3-pip python3-venv pipx golang git wget curl unzip
+sudo apt install -y python3 python-is-python3 python3-pip python3-venv pipx golang git wget curl unzip
 
 echo "Installing core network & web tools via apt..."
 # Removed heavy/redundant tools: masscan, recon-ng, medusa, ncrack, john, hashcat, aircrack-ng, tshark, wfuzz, dirsearch

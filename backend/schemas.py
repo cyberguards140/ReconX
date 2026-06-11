@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import List, Optional
 from datetime import datetime
 
 # Common
@@ -22,8 +21,8 @@ class Target(TargetBase, OrmBase):
 # Project
 class ProjectBase(BaseModel):
     name: str
-    client: Optional[str] = None
-    target_scope: Optional[str] = None
+    client: str | None = None
+    target_scope: str | None = None
 
 class ProjectCreate(ProjectBase):
     pass
@@ -31,7 +30,7 @@ class ProjectCreate(ProjectBase):
 class Project(ProjectBase, OrmBase):
     id: int
     created_at: datetime
-    targets: List[Target] = []
+    targets: list[Target] = []
 
 # Scan
 class ScanBase(BaseModel):
@@ -46,15 +45,15 @@ class Scan(ScanBase, OrmBase):
     id: int
     project_id: int
     status: str
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
 
 # Finding
 class FindingBase(BaseModel):
     title: str
     severity: str
-    description: Optional[str] = None
-    evidence: Optional[str] = None
+    description: str | None = None
+    evidence: str | None = None
 
 class FindingCreate(FindingBase):
     pass
@@ -65,8 +64,8 @@ class Finding(FindingBase, OrmBase):
 
 # Result
 class ResultBase(BaseModel):
-    raw_output: Optional[str] = None
-    parsed_json: Optional[str] = None
+    raw_output: str | None = None
+    parsed_json: str | None = None
 
 class ResultCreate(ResultBase):
     pass
@@ -96,13 +95,13 @@ class ClusterRunRequest(BaseModel):
     cluster_name: str
     target: str
     project_id: int = 1
-    tools: List[ToolCommand]
+    tools: list[ToolCommand]
 
 class WorkflowStep(BaseModel):
     cluster_name: str
-    tools: List[ToolCommand]
+    tools: list[ToolCommand]
 
 class WorkflowRunRequest(BaseModel):
     target: str
     project_id: int = 1
-    steps: List[WorkflowStep]
+    steps: list[WorkflowStep]

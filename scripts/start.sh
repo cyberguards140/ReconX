@@ -4,6 +4,8 @@ GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+cd ..
+
 if [ ! -d ".venv" ]; then
     echo -e "${CYAN}Creating virtual environment...${NC}"
     python3 -m venv .venv
@@ -17,5 +19,5 @@ else
 fi
 
 echo -e "${GREEN}Starting PentDash Backend...${NC}"
-echo -e "${GREEN}Dashboard is running at: http://127.0.0.1:8000${NC}"
-python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+echo -e "${GREEN}Dashboard is running at: http://0.0.0.0:8000 (accessible from any device on your network)${NC}"
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload

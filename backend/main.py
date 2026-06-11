@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine, Base
+from .core.database import engine, Base
 from .routers import projects, scans, findings, workflows
 
 # Create database tables

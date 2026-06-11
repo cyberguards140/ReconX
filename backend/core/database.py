@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Use an absolute path for SQLite to avoid issues if run from different dirs
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "pentdash.db")
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "pentdash.db")
 
 engine = create_engine(
     f"sqlite:///{DB_PATH}", 

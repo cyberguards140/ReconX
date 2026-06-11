@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
-from ..database import get_db
+from ..core.database import get_db
 from .. import models, schemas
-from ..executor import execute_cluster_tools
-from ..summarizer import generate_ai_summary
-from ..workflow_runner import run_workflow_sequence
+from ..services.executor import execute_cluster_tools
+from ..services.summarizer import generate_ai_summary
+from ..services.workflow_runner import run_workflow_sequence
 
 router = APIRouter()
 

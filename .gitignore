@@ -58,3 +58,13 @@ logs/
 .vscode/
 *.swp
 *.swo
+
+# Testing and Linting
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Old Projects/Backups
+Reconx old/
